@@ -19,6 +19,7 @@
     "@types/react-dom": "^19.1.2",
     "@types/react-router-dom": "^5.3.3",
     "classnames": "^2.5.1",
+    "firebase": "^11.9.1",
     "formik": "^2.4.6",
     "lexical": "^0.32.1",
     "react": "^19.1.0",

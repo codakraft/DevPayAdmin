@@ -87,7 +87,7 @@ const UsersTable: React.FC = () => {
   ];
 
   const handleRowClick = (userId: number) => {
-    navigate(`user-management/user-profile/p${userId}`);
+    navigate(`/user-management/user-profile/${userId}`);
   };
 
   return (
