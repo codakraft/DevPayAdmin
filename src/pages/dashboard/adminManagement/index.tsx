@@ -4,6 +4,7 @@ import UsersTable from "../components/UsersTable";
 import "./styless.css";
 import admin from "../../../assets/admin.svg";
 import filter from "../../../assets/filter.svg";
+import AdminTable from "./components/adminTable";
 
 function AdminManagement() {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ function AdminManagement() {
 
       <div className="users-section">
         <div className="admin-management-actions">
-          <div className="search-container-admin">
+          {/* <div className="search-container-admin">
             <div className="search-icon-admin">
               <svg
                 width="20"
@@ -52,13 +53,13 @@ function AdminManagement() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input-admin"
             />
-          </div>
+          </div> */}
 
           <div className="action-buttons">
-            <button className="filter-button">
+            {/* <button className="filter-button">
               <img src={filter} alt="Filter" className="filter-icon" />
               Filter
-            </button>
+            </button> */}
 
             <button
               className="create-admin-button"
@@ -77,7 +78,7 @@ function AdminManagement() {
             </button>
           </div>
         </div>
-        <UsersTable />
+        <AdminTable />
       </div>
     </>
   );

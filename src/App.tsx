@@ -22,6 +22,16 @@ import CreateRoles from "./pages/dashboard/adminManagement/rolePer";
 import UserProfile from "./pages/dashboard/userManagement/userProfile";
 import AdsManagement from "./pages/dashboard/adsManagement/AdsManagement";
 import CreateAdd from "./pages/dashboard/adsManagement";
+import AllLoan from "./pages/dashboard/loan";
+import LoanProduct from "./pages/dashboard/loan-product/loanProduct";
+import LoanProductManagement from "./pages/dashboard/loan-product/create-loan";
+import AuditTrail from "./pages/dashboard/audit-trail";
+import AdminUserProfile from "./pages/dashboard/adminManagement/admin-userprofile";
+import LoanRequestPage from "./pages/dashboard/loanRequest";
+import LoanDetails from "./pages/dashboard/loanRequest/loanDetails";
+import LoanDetail from "./pages/dashboard/loan/loanDetail";
+import UnpaidLoan from "./pages/dashboard/loan/unpaid-loan";
+import OngoingCollections from "./pages/dashboard/loan/allCollection";
 
 function App() {
   return (
@@ -60,6 +70,16 @@ function App() {
                 path="/admin-management/roles-permissions"
                 element={<CreateRoles />}
               />
+              <Route
+                path="/admin-management/admin-userProfile/:userId"
+                element={<AdminUserProfile />}
+              />
+
+              <Route path="/loan-management" element={<LoanRequestPage />} />
+              <Route
+                path="/loan-management/details/:userId"
+                element={<LoanDetails />}
+              />
 
               <Route
                 path="/features/group-communities"
@@ -73,23 +93,27 @@ function App() {
                 path="/ads-management/create"
                 element={<AdsManagement />}
               />
-
               <Route
-                path="/content-management"
-                element={<div>Content Management</div>}
+                path="/loan-product/creat-loan"
+                element={<LoanProductManagement />}
               />
+
+              <Route path="/audit-trail/index" element={<AuditTrail />} />
+
+              <Route path="/content-management" element={<LoanProduct />} />
               <Route path="/analytics" element={<div>Analytics</div>} />
               <Route
                 path="/system-settings"
                 element={<div>System Settings</div>}
               />
 
-              <Route path="/communication/email" element={<div>Email</div>} />
+              <Route path="/loan" element={<AllLoan />} />
+              <Route path="/loan/unpaid-loans" element={<UnpaidLoan />} />
+              <Route path="/dashboard/loans/:id" element={<LoanDetail />} />
               <Route
-                path="/communication/notifications"
-                element={<div>Notifications</div>}
+                path="/loan/ongoing-collections"
+                element={<OngoingCollections />}
               />
-              <Route path="/communication/chat" element={<div>Chat</div>} />
             </Route>
           </Route>
 

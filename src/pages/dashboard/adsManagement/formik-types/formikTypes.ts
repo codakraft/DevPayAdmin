@@ -12,4 +12,28 @@ export interface AdFormValues {
   ageRange: string[];
   days: string;
   budget: string;
+
+  // Loan product fields
+  name?: string;
+  code?: string;
+  minLoanAmount?: string;
+  maxLoanAmount?: string;
+  minTenor?: string;
+  maxTenor?: string;
+  minAge?: string;
+  maxAge?: string;
+  moratorium?: string;
+  notifyApprovers?: boolean;
+
+  // Loan product settings fields
+  interestRate?: string;
+  penaltyPercent?: string;
+  turnoverEligibility?: string;
+  interestComputationFrequency?: string;
+  interestComputationBasis?: string;
+  paymentScheduleBreakdown?: string;
+  allowMultipleLoans?: boolean;
+
+  // Interest Fees Table
+  interestFeesTable?: Array<{ [key: string]: string | number | null }>;
 }

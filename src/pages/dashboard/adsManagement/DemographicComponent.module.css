@@ -138,3 +138,34 @@ margin-bottom: 1rem;
   color: #555;
   cursor: pointer;
 }
+.customTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+  background-color: white;
+}
+
+.customTable th,
+.customTable td {
+  text-align: left;
+  padding: 1rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.customTable td {
+ color: #09090B;
+}
+
+.customTable th {
+  color: #717179;
+  font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}

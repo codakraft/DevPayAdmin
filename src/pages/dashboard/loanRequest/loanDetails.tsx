@@ -1,0 +1,524 @@
+import React, { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import Button from "../../../ui/components/button/button";
+import "./loanDetails.css";
+
+const LoanDetails: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [showModal, setShowModal] = useState(false);
+  const [modalAction, setModalAction] = useState<"approve" | "reject" | null>(
+    null
+  );
+  const [comment, setComment] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [approvedAmount, setApprovedAmount] = useState("");
+
+  // Mock data - in real app, fetch based on ID
+  const loanData = {
+    id: id,
+    applicantName: "Fayemi Kayode",
+    bvn: "32345678901",
+    email: "fayemi.kayode@example.com",
+    phone: "+234 123 4567 890",
+    dateCreated: "06-03-2025",
+    loanAmount: "₦500,000",
+    amountRequested: "₦1,000,000",
+    status: "Active",
+    purpose: "Business Expansion",
+    employmentStatus: "Employed",
+    monthlyIncome: "₦350,000",
+    creditScore: 750,
+    collateral: "Property Documents",
+    tenor: "12 months",
+    interestRate: "4.5%",
+    monthlyRepayment: "₦45,833",
+    approvalDate: "08-03-2025",
+    disbursementDate: "10-03-2025",
+    nextPaymentDate: "10-04-2025",
+  };
+
+  const handleApprove = () => {
+    setModalAction("approve");
+    setApprovedAmount(loanData.loanAmount.replace("₦", "").replace(",", ""));
+    setShowModal(true);
+  };
+
+  const handleReject = () => {
+    setModalAction("reject");
+    setShowModal(true);
+  };
+
+  const handleConfirmAction = async () => {
+    setIsProcessing(true);
+
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      if (modalAction === "approve") {
+        console.log(
+          "Approved loan",
+          id,
+          "with amount:",
+          approvedAmount,
+          "and comment:",
+          comment
+        );
+        // Here you would typically update the loan status and redirect
+      } else {
+        console.log("Rejected loan", id, "with comment:", comment);
+        // Here you would typically update the loan status and redirect
+      }
+
+      setShowModal(false);
+      setComment("");
+      setApprovedAmount("");
+      // You might want to navigate back or refresh the data here
+    } catch (error) {
+      console.error("Error processing loan action:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (!isProcessing) {
+      setShowModal(false);
+      setComment("");
+      setApprovedAmount("");
+      setModalAction(null);
+    }
+  };
+
+  const getActionButtonText = () => {
+    return modalAction === "approve" ? "Approve Loan" : "Reject Loan";
+  };
+
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="header-left">
+          <button className="back-btn" onClick={handleBack}>
+            ← Back
+          </button>
+          <div>
+            <h1>Loan Application Details</h1>
+            <p className="subtitle">
+              Complete loan information and decision tools
+            </p>
+          </div>
+        </div>
+        <div className="header-actions">
+          <Button variant="danger" size="md" onClick={handleReject}>
+            Reject
+          </Button>
+          <Button variant="primary" size="md" onClick={handleApprove}>
+            Approve
+          </Button>
+        </div>
+      </div>
+
+      <div className="loan-content">
+        {/* Applicant Info Card */}
+        <div className="info-card">
+          <div className="card-header">
+            <h2>Applicant Information</h2>
+            <span className={`status-badge ${loanData.status.toLowerCase()}`}>
+              {loanData.status}
+            </span>
+          </div>
+          <div className="info-grid">
+            <div className="info-item">
+              <span className="label">Full Name</span>
+              <span className="value">{loanData.applicantName}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">BVN</span>
+              <span className="value">{loanData.bvn}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Email</span>
+              <span className="value">{loanData.email}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Phone</span>
+              <span className="value">{loanData.phone}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Employment Status</span>
+              <span className="value">{loanData.employmentStatus}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Monthly Income</span>
+              <span className="value">{loanData.monthlyIncome}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Loan Details Card */}
+        <div className="info-card">
+          <div className="card-header">
+            <h2>Loan Details</h2>
+          </div>
+          <div className="info-grid">
+            <div className="info-item highlight">
+              <span className="label">Amount Requested</span>
+              <span className="value large">{loanData.amountRequested}</span>
+            </div>
+            {/* <div className="info-item highlight">
+              <span className="label">Approved Amount</span>
+              <span className="value large">{loanData.loanAmount}</span>
+            </div> */}
+            <div className="info-item">
+              <span className="label">Purpose</span>
+              <span className="value">{loanData.purpose}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Tenor</span>
+              <span className="value">{loanData.tenor}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Interest Rate</span>
+              <span className="value">{loanData.interestRate}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Monthly Repayment</span>
+              <span className="value">{loanData.monthlyRepayment}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Risk Assessment Card */}
+        <div className="info-card">
+          <div className="card-header">
+            <h2>Risk Assessment</h2>
+          </div>
+          <div className="risk-content">
+            <div className="credit-score-widget">
+              <div className="score-circle">
+                <span className="score-number">{loanData.creditScore}</span>
+                <span className="score-label">Credit Score</span>
+              </div>
+              <div className="score-status excellent">Excellent</div>
+            </div>
+            <div className="risk-details">
+              <div className="info-item">
+                <span className="label">Risk Level</span>
+                <span className="value risk-low">Low Risk</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Employment & Financial Data */}
+        <div className="info-card">
+          <div className="card-header">
+            <h2>Employment & Financial Information</h2>
+          </div>
+          <div className="employment-content">
+            <div className="employer-info">
+              <div className="info-item">
+                <span className="label">Employer</span>
+                <span className="value">KOGI STATE GOVERNMENT</span>
+              </div>
+              <div className="info-item highlight-salary">
+                <span className="label">Average Monthly Salary</span>
+                <span className="value large">₦28,724.14</span>
+              </div>
+            </div>
+
+            <div className="financial-tables">
+              <div className="table-section">
+                <h3>Salary/Payment History</h3>
+                <table className="financial-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Date</th>
+                      <th>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>1</td>
+                      <td>29-May-2025</td>
+                      <td>₦97,388.47</td>
+                    </tr>
+                    <tr>
+                      <td>2</td>
+                      <td>26-May-2025</td>
+                      <td>₦91,253.45</td>
+                    </tr>
+                    <tr>
+                      <td>3</td>
+                      <td>17-Apr-2025</td>
+                      <td>₦46,407.47</td>
+                    </tr>
+                    <tr>
+                      <td>4</td>
+                      <td>25-Mar-2025</td>
+                      <td>₦43,507.47</td>
+                    </tr>
+                    <tr>
+                      <td>5</td>
+                      <td>3-Mar-2025</td>
+                      <td>₦43,507.47</td>
+                    </tr>
+                    <tr>
+                      <td>6</td>
+                      <td>23-Jan-2025</td>
+                      <td>₦13,007.47</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="table-section">
+                <h3>Existing Loan(s)</h3>
+                <table className="financial-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Disbursed On</th>
+                      <th>Loan Amount</th>
+                      <th>Outstanding</th>
+                      <th>Monthly Payment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>1</td>
+                      <td>17-Jun-2025</td>
+                      <td>₦12,000.00</td>
+                      <td>₦22,800.00</td>
+                      <td>₦1,900.00</td>
+                    </tr>
+                    <tr>
+                      <td>2</td>
+                      <td>11-Jun-2025</td>
+                      <td>₦50,000.00</td>
+                      <td>₦86,000.00</td>
+                      <td>₦14,333.33</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Timeline Card */}
+        {/* <div className="info-card">
+          <div className="card-header">
+            <h2>Loan Timeline</h2>
+          </div>
+          <div className="timeline">
+            <div className="timeline-item completed">
+              <div className="timeline-dot"></div>
+              <div className="timeline-content">
+                <h3>Application Submitted</h3>
+                <p>{loanData.dateCreated}</p>
+              </div>
+            </div>
+            <div className="timeline-item completed">
+              <div className="timeline-dot"></div>
+              <div className="timeline-content">
+                <h3>Application Approved</h3>
+                <p>{loanData.approvalDate}</p>
+              </div>
+            </div>
+            <div className="timeline-item completed">
+              <div className="timeline-dot"></div>
+              <div className="timeline-content">
+                <h3>Loan Disbursed</h3>
+                <p>{loanData.disbursementDate}</p>
+              </div>
+            </div>
+            <div className="timeline-item pending">
+              <div className="timeline-dot"></div>
+              <div className="timeline-content">
+                <h3>Next Payment Due</h3>
+                <p>{loanData.nextPaymentDate}</p>
+              </div>
+            </div>
+          </div>
+        </div> */}
+      </div>
+
+      {/* Approval/Rejection Modal */}
+      {showModal && (
+        <div
+          className="modal-overlay"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+        >
+          <div className="loan-action-modal">
+            <div className="modal-header">
+              <h2 id="modal-title">
+                {modalAction === "approve" ? "Approve" : "Reject"} Loan
+                Application
+              </h2>
+              <button
+                className="modal-close-btn"
+                onClick={handleCloseModal}
+                disabled={isProcessing}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="loan-summary">
+                <h3>Loan Summary</h3>
+                <div className="summary-details">
+                  <div className="summary-item">
+                    <span className="label">Applicant:</span>
+                    <span className="value">{loanData.applicantName}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="label">Amount Requested:</span>
+                    <span className="value">{loanData.amountRequested}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="label">Purpose:</span>
+                    <span className="value">{loanData.purpose}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="label">Monthly Income:</span>
+                    <span className="value">{loanData.monthlyIncome}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="label">Credit Score:</span>
+                    <span className="value">{loanData.creditScore}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="action-section">
+                <h3>
+                  {modalAction === "approve" ? "Approval" : "Rejection"} Details
+                </h3>
+
+                {modalAction === "approve" && (
+                  <div className="approval-info">
+                    <p className="info-text">
+                      By approving this loan, you confirm that the applicant
+                      meets all lending criteria and risk assessment
+                      requirements.
+                    </p>
+
+                    <div className="approved-amount-section">
+                      <label htmlFor="approvedAmount">Approved Amount *</label>
+                      <div className="amount-input-wrapper">
+                        <span className="currency-symbol">₦</span>
+                        <input
+                          type="number"
+                          id="approvedAmount"
+                          value={approvedAmount}
+                          onChange={(e) => setApprovedAmount(e.target.value)}
+                          placeholder="Enter approved amount"
+                          min="0"
+                          step="1000"
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                      <small className="amount-help-text">
+                        Maximum requested: {loanData.amountRequested}
+                      </small>
+                    </div>
+
+                    <div className="approval-terms">
+                      <div className="term-item">
+                        <span className="label">Interest Rate:</span>
+                        <span className="value">{loanData.interestRate}</span>
+                      </div>
+                      <div className="term-item">
+                        <span className="label">Tenor:</span>
+                        <span className="value">{loanData.tenor}</span>
+                      </div>
+                      <div className="term-item">
+                        <span className="label">Monthly Repayment:</span>
+                        <span className="value">
+                          {loanData.monthlyRepayment}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {modalAction === "reject" && (
+                  <div className="rejection-info">
+                    <p className="info-text">
+                      Please provide a reason for rejecting this loan
+                      application. This will help the applicant understand the
+                      decision.
+                    </p>
+                  </div>
+                )}
+
+                <div className="comment-section">
+                  <label htmlFor="comment">
+                    {modalAction === "approve"
+                      ? "Additional Notes (Optional)"
+                      : "Reason for Rejection *"}
+                  </label>
+                  <textarea
+                    id="comment"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder={
+                      modalAction === "approve"
+                        ? "Add any additional notes or conditions..."
+                        : "Please specify the reason for rejection..."
+                    }
+                    rows={4}
+                    disabled={isProcessing}
+                    required={modalAction === "reject"}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <Button
+                variant="outline"
+                size="md"
+                onClick={handleCloseModal}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant={modalAction === "approve" ? "primary" : "danger"}
+                size="md"
+                onClick={handleConfirmAction}
+                disabled={
+                  isProcessing ||
+                  (modalAction === "reject" && !comment.trim()) ||
+                  (modalAction === "approve" && !approvedAmount.trim())
+                }
+              >
+                {isProcessing ? (
+                  <>
+                    <span className="loading-spinner"></span> Processing...
+                  </>
+                ) : (
+                  getActionButtonText()
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LoanDetails;

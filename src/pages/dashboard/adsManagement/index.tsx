@@ -9,11 +9,11 @@ export default function CreateAdd() {
     <>
       <div className={styles.headerFlex}>
         <div>
-          <h1>ADS Management</h1>
-          <p>Here is a view of your messages</p>
+          <h1>Loan Request</h1>
+          <p>Here is a view of your pending loan requests</p>
         </div>
 
-        <Link to="/ads-management/create" className={styles.createAddLink}>
+        {/* <Link to="/ads-management/create" className={styles.createAddLink}>
           <Button
             variant="primary"
             size="md"
@@ -22,7 +22,7 @@ export default function CreateAdd() {
           >
             Create an Add
           </Button>
-        </Link>
+        </Link> */}
       </div>
 
       <AdsTable />

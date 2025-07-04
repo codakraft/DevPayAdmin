@@ -3,8 +3,8 @@ import "./styless.css";
 
 interface Permissions {
   allPermission: boolean;
-  generalAccess: boolean;
-  editAccess: boolean;
+  businessOperation: boolean;
+  auditAccess: boolean;
   createAdmin: boolean;
   deleteUser: boolean;
   sendBroadcast: boolean;
@@ -24,8 +24,8 @@ function CreateRoles() {
     roleName: "",
     permissions: {
       allPermission: false,
-      generalAccess: false,
-      editAccess: false,
+      businessOperation: false,
+      auditAccess: false,
       createAdmin: false,
       deleteUser: false,
       sendBroadcast: false,
@@ -61,8 +61,8 @@ function CreateRoles() {
         ...formData,
         permissions: {
           allPermission: checked,
-          generalAccess: checked,
-          editAccess: checked,
+          businessOperation: checked,
+          auditAccess: checked,
           createAdmin: checked,
           deleteUser: checked,
           sendBroadcast: checked,
@@ -78,8 +78,8 @@ function CreateRoles() {
           // If any permission is unchecked, "All Permission" should be unchecked too
           allPermission:
             name !== "allPermission" && checked
-              ? formData.permissions.generalAccess &&
-                formData.permissions.editAccess &&
+              ? formData.permissions.businessOperation &&
+                formData.permissions.auditAccess &&
                 formData.permissions.createAdmin &&
                 formData.permissions.deleteUser &&
                 formData.permissions.sendBroadcast
@@ -168,10 +168,10 @@ function CreateRoles() {
                     type="checkbox"
                     id="generalAccess"
                     name="generalAccess"
-                    checked={formData.permissions.generalAccess}
+                    checked={formData.permissions.businessOperation}
                     onChange={handleCheckboxChange}
                   />
-                  <label htmlFor="generalAccess">General Access</label>
+                  <label htmlFor="generalAccess">Business Operation</label>
                 </div>
               </div>
 
@@ -182,10 +182,10 @@ function CreateRoles() {
                     type="checkbox"
                     id="editAccess"
                     name="editAccess"
-                    checked={formData.permissions.editAccess}
+                    checked={formData.permissions.auditAccess}
                     onChange={handleCheckboxChange}
                   />
-                  <label htmlFor="editAccess">Edit Access</label>
+                  <label htmlFor="editAccess">Audit Access</label>
                 </div>
               </div>
 

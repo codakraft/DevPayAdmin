@@ -1,0 +1,264 @@
+.adHeading {
+  margin: 1rem 0;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+  font-family: sans-serif;
+  /* background-color: red; */
+}
+
+.stepPanel {
+  width: 280px;
+  padding: 2rem 1rem;
+  background-color: #fff;
+  border-right: 1px solid #ddd;
+}
+
+.stepList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  position: relative;
+}
+
+.stepItem {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  margin-bottom: 2.5rem;
+  cursor: pointer;
+  color: #666;
+  gap: 0.75rem;
+}
+
+.stepItem:hover {
+  color: #000;
+}
+
+.bullet {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: ##a1a1a9;
+  border: 2px solid #ccc;
+  flex-shrink: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.active .bullet {
+  border-color: #10ba93;
+}
+
+.checkIcon {
+  width: 12px;
+  height: 12px;
+  fill: #10ba93;
+}
+
+.arrow {
+  position: absolute;
+  width: 2px;
+  height: 40px;
+  background-color: #ccc;
+  top: 24px;
+  left: 10px;
+  z-index: 0;
+}
+
+.stepContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.stepHeading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.stepDescription {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.form {
+  flex: 1;
+  max-width: 70%;
+  padding: 2rem;
+  background-color: #fff;
+  overflow-y: auto;
+  /* background-color: red; */
+}
+
+.mediaOptions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.titleInput,
+.linkInput {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.editorControls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.editorControls button {
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: #f1f1f1;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.textArea {
+  width: 100%;
+  min-height: 120px;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  resize: vertical;
+}
+
+.uploadBoxLeft,
+.uploadBoxFull {
+  border: 2px dashed #ccc;
+  padding: 2rem;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.uploadBoxLeft {
+  width: 50%;
+}
+
+.uploadBoxFull {
+  width: 100%;
+}
+
+.uploadBoxSmall {
+  min-width: 180px;
+  flex: 0 0 auto;
+  border: 2px dashed #ccc;
+  padding: 1.5rem;
+  text-align: center;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  scroll-snap-align: start;
+  position: relative;
+  cursor: pointer;
+}
+
+.uploadBoxSmall input {
+  display: none;
+}
+
+/* .uploadBoxFull input {
+    display: none;
+} */
+.carouselWrapper {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.carouselWrapper::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.carousel {
+  display: flex;
+  gap: 1rem;
+  width: max-content;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.uploadVideoBox {
+  border: 2px dashed #ccc;
+  padding: 2rem;
+  text-align: center;
+  background-color: #f1f5ff;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.videoIcon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.plus {
+  font-size: 2rem;
+  color: #007bff;
+  margin-bottom: 0.5rem;
+}
+
+.uploadText {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.infoText {
+  font-size: 0.9rem;
+  color: #777;
+  margin-bottom: 1rem;
+}
+
+.ctaWrapper {
+  margin-bottom: 1rem;
+}
+
+.ctaLabel {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.ctaInput {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.nextBtn {
+  margin-top: 6rem;
+  margin-left: auto;
+}
+
+.buttonGroup {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}

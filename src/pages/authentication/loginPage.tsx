@@ -1,10 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { auth } from "../../firebase";
-import { useAdminLoginMutation } from "../../store/apiSlice";
 import "./LoginPage.css";
-import logoImage from "../../assets/logo.svg"; // Import the SVG file
+import logoImage from "../../assets/logoIcon.png"; // Adjust the path as necessary
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -17,44 +15,22 @@ const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [adminLogin] = useAdminLoginMutation();
 
   // Determine where to redirect after login
-  const from = location.state?.from?.pathname || "/dashboard";
+  const from = location.state?.from?.pathname ?? "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-
-    // try {
-    //   if (email && password) {
-    //     // Firebase login
-    //     await login(email, password);
-    //     // Get Firebase user and ID token
-    //     const user = auth.currentUser;
-    //     const idToken = user ? await user.getIdToken() : null;
-    //     if (!idToken) throw new Error("Could not get Firebase ID token");
-    //     // Call backend admin/login endpoint
-    //     await adminLogin({ token: idToken }).unwrap();
-    //     navigate(from, { replace: true });
-    //   } else {
-    //     setError("Please enter both email and password");
-    //   }
-    // } catch (err: any) {
-    //   // Firebase or backend error handling
-    //   console.error("Login error:", err);
-    //   let message = "Login failed. Please check your credentials.";
-    //   if (err.code === "auth/user-not-found") message = "User not found.";
-    //   if (err.code === "auth/wrong-password") message = "Incorrect password.";
-    //   if (err.code === "auth/invalid-email") message = "Invalid email address.";
-    //   if (err.status === 401 || err.status === 403)
-    //     message = "Unauthorized: Invalid admin credentials.";
-    //   if (err.data && err.data.message) message = err.data.message;
-    //   setError(message);
-    // } finally {
-    //   setIsLoading(false);
-    // }
+    try {
+      await login(email, password);
+      navigate(from, { replace: true });
+    } catch (err: any) {
+      setError("Invalid credentials");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const togglePasswordVisibility = () => {
@@ -70,8 +46,8 @@ const LoginPage: React.FC = () => {
     <div className="login-container">
       <div className="login-card">
         <div className="logo-container">
-          {/* <img src={logoImage} alt="Japaflex" className="logo" /> */}
-          <h2 className="logo-text">deVpay</h2>
+          <img src={logoImage} alt="Japaflex" className="logo" />
+          {/* <h2 className="logo-text">deVpay</h2> */}
         </div>
         <div className="login-card-inner">
           <div className="login-content">

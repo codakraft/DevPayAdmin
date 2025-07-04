@@ -3,22 +3,20 @@ import React, {
   useState,
   useContext,
   ReactNode,
-  useEffect,
+  useMemo,
 } from "react";
-import { auth } from "../firebase";
-import {
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  User as FirebaseUser,
-} from "firebase/auth";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  user: FirebaseUser | null;
+  user: { email: string } | null;
 }
+
+const DUMMY_USER = {
+  email: "dahmaular@gmail.com",
+  password: "12345678",
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -28,45 +26,35 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setIsAuthenticated(!!firebaseUser);
-    });
-    return () => unsubscribe();
-  }, []);
+  const [user, setUser] = useState<{ email: string } | null>(null);
 
   const login = async (email: string, password: string) => {
-    const firebaseLogin = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    console.log(
-      "Login successful:",
-      (await firebaseLogin?.user?.getIdTokenResult()).token
-    );
-    setUser(firebaseLogin.user);
-    // onAuthStateChanged will update state
+    if (email === DUMMY_USER.email && password === DUMMY_USER.password) {
+      setIsAuthenticated(true);
+      setUser({ email });
+    } else {
+      setIsAuthenticated(false);
+      setUser(null);
+      throw new Error("Invalid credentials");
+    }
   };
 
   const logout = async () => {
-    await signOut(auth);
-    // onAuthStateChanged will update state
+    setIsAuthenticated(false);
+    setUser(null);
   };
 
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, user }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ isAuthenticated, login, logout, user }),
+    [isAuthenticated, user]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;

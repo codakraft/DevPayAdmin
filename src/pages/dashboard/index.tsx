@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import "./styles.css";
 import StatCard from "./components/StatCard";
 import AnalyticsChart from "./components/AnalyticsChart";
@@ -6,56 +6,100 @@ import UserAnalysisChart from "./components/UserAnalysisChart";
 import UsersTable from "./components/UsersTable";
 
 const Dashboard: React.FC = () => {
-  const [activeTimeFilter, setActiveTimeFilter] = useState<"week" | "year">(
-    "week"
+  const [activeTimeFilter, setActiveTimeFilter] = useState<"month" | "year">(
+    "month"
   );
+
+  // Define different stat values based on time filter
+  const statsData = useMemo(() => {
+    return {
+      month: {
+        activeUsers: "14",
+        totalLoanRequests: "₦8,902,000.98",
+        loanRequestsChange: "-22%",
+        totalDisbursedLoans: "₦12,000,984.98",
+        disbursedLoansChange: "-22%",
+        totalActiveLoans: "312",
+      },
+      year: {
+        activeUsers: "145",
+        totalLoanRequests: "₦112,500,000.00",
+        loanRequestsChange: "+15%",
+        totalDisbursedLoans: "₦300,000,000.00",
+        disbursedLoansChange: "+8%",
+        totalActiveLoans: "1,254",
+      },
+    };
+  }, []);
+
+  // Get current stats based on time filter
+  const currentStats = statsData[activeTimeFilter];
 
   return (
     <>
       <div className="page-header">
         <h1>Dashboard</h1>
         <p className="subtitle">Here is an overview of your dashboard</p>
+        <div className="time-filter-header">
+          <span>Viewing data for: </span>
+          <button
+            className={`filter-btn ${
+              activeTimeFilter === "month" ? "active" : ""
+            }`}
+            onClick={() => setActiveTimeFilter("month")}
+          >
+            This Month
+          </button>
+          <button
+            className={`filter-btn ${
+              activeTimeFilter === "year" ? "active" : ""
+            }`}
+            onClick={() => setActiveTimeFilter("year")}
+          >
+            This Year
+          </button>
+        </div>
       </div>
 
       <div className="stats-grid">
         <StatCard
           title="Total Active Users"
-          value="20,000"
-          change="-22%"
-          period="This week"
+          value={currentStats.activeUsers}
+          change=""
+          period={activeTimeFilter === "month" ? "This month" : "This year"}
         />
         <StatCard
-          title="Flagged Users"
-          value="20,000"
-          change="-22%"
-          period="This week"
+          title="Total Loan Requests"
+          value={currentStats.totalLoanRequests}
+          change={currentStats.loanRequestsChange}
+          period={activeTimeFilter === "month" ? "This month" : "This year"}
         />
         <StatCard
-          title="Banned Users"
-          value="20,000"
-          change="-22%"
-          period="This week"
+          title="Loan Requests"
+          value="₦20,000,000.00"
+          change=""
+          period="All time"
         />
       </div>
 
       <div className="stats-grid">
         <StatCard
-          title="Total Promoted Post"
-          value="20,000"
-          change="-22%"
-          period="This week"
+          title="Total Disbursed Loans"
+          value={currentStats.totalDisbursedLoans}
+          change={currentStats.disbursedLoansChange}
+          period={activeTimeFilter === "month" ? "This month" : "This year"}
         />
         <StatCard
-          title="Total Active Adverts"
-          value="300"
-          change="-22%"
-          period="This week"
+          title="Total Disbursed Loans"
+          value="₦300,000,000.00"
+          change=""
+          period="All time"
         />
         <StatCard
-          title="Live Users"
-          value="20,000"
-          change="-22%"
-          period="This week"
+          title="Total Active Loans"
+          value={currentStats.totalActiveLoans}
+          change=""
+          period={activeTimeFilter === "month" ? "This month" : "This year"}
         />
       </div>
 
@@ -66,21 +110,21 @@ const Dashboard: React.FC = () => {
             <div className="chart-legend">
               <div className="legend-item">
                 <div className="color-indicator active"></div>
-                <span>Active Users</span>
+                <span>Loan Disbursed</span>
               </div>
               <div className="legend-item">
                 <div className="color-indicator inactive"></div>
-                <span>Inactive Users</span>
+                <span>Loan request</span>
               </div>
             </div>
             <div className="time-filter">
               <button
                 className={`filter-btn ${
-                  activeTimeFilter === "week" ? "active" : ""
+                  activeTimeFilter === "month" ? "active" : ""
                 }`}
-                onClick={() => setActiveTimeFilter("week")}
+                onClick={() => setActiveTimeFilter("month")}
               >
-                Week
+                Month
               </button>
               <button
                 className={`filter-btn ${
@@ -92,16 +136,16 @@ const Dashboard: React.FC = () => {
               </button>
             </div>
           </div>
-          <AnalyticsChart />
+          <AnalyticsChart timeFilter={activeTimeFilter} />
         </div>
 
         <div className="user-analysis-section">
           <h2>User Analysis</h2>
-          <UserAnalysisChart />
+          <UserAnalysisChart timeFilter={activeTimeFilter} />
         </div>
       </div>
 
-      <div className="users-section">
+      {/* <div className="users-section">
         <div className="section-header">
           <h2>Users</h2>
           <div className="actions">
@@ -142,7 +186,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
         <UsersTable />
-      </div>
+      </div> */}
     </>
   );
 };

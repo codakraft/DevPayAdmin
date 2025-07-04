@@ -40,11 +40,28 @@
     font-size: 14px;
   }
   
+  .time-filter-header {
+    display: flex;
+    align-items: center;
+    margin-top: 16px;
+    font-size: 14px;
+    color: #4B5563;
+  }
+  
+  .time-filter-header span {
+    margin-right: 10px;
+  }
+  
+  .time-filter-header .filter-btn {
+    margin-right: 8px;
+  }
+  
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     margin-bottom: 20px;
+    margin-top: 20px;
   }
   
   .charts-container {

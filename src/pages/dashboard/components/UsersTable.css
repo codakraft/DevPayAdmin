@@ -58,3 +58,117 @@
 .more-options:hover {
   color: #333;
 }
+
+/* Search and Filter Controls */
+.table-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.search-container {
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: #0a78eb;
+  box-shadow: 0 0 0 3px rgba(10, 120, 235, 0.1);
+}
+
+.filters-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filter-select, .date-filter {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  background-color: white;
+  outline: none;
+  transition: border-color 0.2s ease;
+  min-width: 120px;
+}
+
+.filter-select:focus, .date-filter:focus {
+  border-color: #0a78eb;
+  box-shadow: 0 0 0 3px rgba(10, 120, 235, 0.1);
+}
+
+.clear-filters {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-filters:hover {
+  background-color: #e5e7eb;
+}
+
+.no-results {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  padding: 2rem;
+}
+
+/* Export Button Styles */
+.export-btn {
+  padding: 8px 16px;
+  background-color: #0a78eb;
+  color: white;
+  border: 1px solid #0a78eb;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.export-btn:hover {
+  background-color: #0862c7;
+  border-color: #0862c7;
+  box-shadow: 0 2px 4px rgba(10, 120, 235, 0.2);
+}
+
+.export-btn:active {
+  transform: translateY(1px);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .table-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .search-container {
+    max-width: none;
+  }
+
+  .filters-container {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}

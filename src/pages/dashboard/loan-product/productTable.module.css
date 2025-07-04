@@ -1,0 +1,79 @@
+.customTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+  background-color: white;
+}
+
+.customTable th,
+.customTable td {
+  text-align: left;
+  padding: 1rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.customTable td {
+ color: #09090B;
+}
+
+.customTable th {
+  color: #717179;
+  font-weight: 600;
+}
+
+.adDetails {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.adDetails img {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.5rem;
+  object-fit: cover;
+}
+
+.adDetails p {
+  margin: 0;
+  /* color: #6b7280; */
+  font-size: 1rem;
+}
+
+.badge {
+  display: inline-block;
+  background-color: #d1fae5;
+  color: #065f46;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.inactivebadge {
+  display: inline-block;
+  background-color: red;
+  color: #d1fae5;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.ellipsisBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customTable td:last-child {
+  text-align: right;
+  padding-right: 1rem;
+}

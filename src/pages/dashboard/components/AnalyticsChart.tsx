@@ -1,8 +1,50 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useMemo } from "react";
 import "./AnalyticsChart.css";
 
-const AnalyticsChart: React.FC = () => {
+interface DataPoint {
+  month: string;
+  disbursed: number;
+  requested: number;
+}
+
+interface AnalyticsChartProps {
+  timeFilter: "month" | "year";
+}
+
+const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ timeFilter }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Data for monthly view wrapped in useMemo to prevent re-creation on each render
+  const monthlyData = useMemo<DataPoint[]>(
+    () => [
+      { month: "JAN", disbursed: 12000000, requested: 18000000 },
+      { month: "FEB", disbursed: 15000000, requested: 22000000 },
+      { month: "MAR", disbursed: 18500000, requested: 25000000 },
+      { month: "APR", disbursed: 22000000, requested: 29000000 },
+      { month: "MAY", disbursed: 24500000, requested: 28000000 },
+      { month: "JUN", disbursed: 28000000, requested: 31000000 },
+      { month: "JUL", disbursed: 26000000, requested: 30000000 },
+      { month: "AUG", disbursed: 32000000, requested: 38000000 },
+      { month: "SEP", disbursed: 30000000, requested: 36000000 },
+      { month: "OCT", disbursed: 35000000, requested: 42000000 },
+      { month: "NOV", disbursed: 38000000, requested: 45000000 },
+      { month: "DEC", disbursed: 40000000, requested: 48000000 },
+    ],
+    []
+  );
+
+  // Data for yearly view wrapped in useMemo
+  const yearlyData = useMemo<DataPoint[]>(
+    () => [
+      { month: "2020", disbursed: 80000000, requested: 120000000 },
+      { month: "2021", disbursed: 150000000, requested: 200000000 },
+      { month: "2022", disbursed: 220000000, requested: 280000000 },
+      { month: "2023", disbursed: 290000000, requested: 350000000 },
+      { month: "2024", disbursed: 350000000, requested: 420000000 },
+      { month: "2025", disbursed: 400000000, requested: 480000000 },
+    ],
+    []
+  );
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -18,6 +60,11 @@ const AnalyticsChart: React.FC = () => {
     const width = canvas.width;
     const height = canvas.height;
 
+    // Select appropriate data based on timeFilter
+    const data = timeFilter === "month" ? monthlyData : yearlyData;
+    const labels = data.map((item) => item.month);
+    const divisions = data.length;
+
     // Grid lines (light)
     ctx.beginPath();
     ctx.strokeStyle = "rgba(229, 231, 235, 0.5)";
@@ -29,95 +76,61 @@ const AnalyticsChart: React.FC = () => {
       ctx.lineTo(width, y);
     }
 
-    // Vertical grid lines for months
-    for (let i = 0; i <= 12; i++) {
-      const x = (width / 12) * i;
+    // Vertical grid lines
+    for (let i = 0; i <= divisions; i++) {
+      const x = (width / divisions) * i;
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
     }
     ctx.stroke();
 
-    // Draw active users line (green)
+    // Get max value for scaling
+    const maxValue = Math.max(
+      ...data.map((item) => Math.max(item.disbursed, item.requested))
+    );
+
+    // Function to normalize data point to canvas height (inverted Y-axis)
+    const normalizeY = (value: number) => {
+      return height - (value / maxValue) * (height * 0.8);
+    };
+
+    // Draw disbursed loans line (green)
     ctx.beginPath();
-    ctx.moveTo(0, height * 0.7);
-    ctx.bezierCurveTo(
-      width * 0.1,
-      height * 0.6,
-      width * 0.2,
-      height * 0.5,
-      width * 0.3,
-      height * 0.4
-    );
-    ctx.bezierCurveTo(
-      width * 0.4,
-      height * 0.3,
-      width * 0.5,
-      height * 0.5,
-      width * 0.6,
-      height * 0.2
-    );
-    ctx.bezierCurveTo(
-      width * 0.7,
-      height * 0.1,
-      width * 0.8,
-      height * 0.3,
-      width * 0.9,
-      height * 0.4
-    );
-    ctx.bezierCurveTo(
-      width * 0.95,
-      height * 0.5,
-      width,
-      height * 0.3,
-      width,
-      height * 0.3
-    );
+    data.forEach((point, index) => {
+      const x = (width / divisions) * index + width / divisions / 2;
+      const y = normalizeY(point.disbursed);
+
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
     ctx.strokeStyle = "#4CAF50";
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Draw inactive users line (red)
+    // Draw loan requests line (red)
     ctx.beginPath();
-    ctx.moveTo(0, height * 0.5);
-    ctx.bezierCurveTo(
-      width * 0.1,
-      height * 0.4,
-      width * 0.2,
-      height * 0.3,
-      width * 0.3,
-      height * 0.2
-    );
-    ctx.bezierCurveTo(
-      width * 0.4,
-      height * 0.1,
-      width * 0.5,
-      height * 0.3,
-      width * 0.6,
-      height * 0.5
-    );
-    ctx.bezierCurveTo(
-      width * 0.7,
-      height * 0.7,
-      width * 0.8,
-      height * 0.5,
-      width * 0.9,
-      height * 0.6
-    );
-    ctx.bezierCurveTo(
-      width * 0.95,
-      height * 0.7,
-      width,
-      height * 0.6,
-      width,
-      height * 0.5
-    );
+    data.forEach((point, index) => {
+      const x = (width / divisions) * index + width / divisions / 2;
+      const y = normalizeY(point.requested);
+
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
     ctx.strokeStyle = "#FF5252";
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Draw data point highlight
-    const highlightX = width * 0.6;
-    const highlightY = height * 0.2;
+    // Draw data point highlights
+    const highlightIndex = Math.floor(data.length / 2);
+    const highlightX =
+      (width / divisions) * highlightIndex + width / divisions / 2;
+    const highlightY = normalizeY(data[highlightIndex].disbursed);
 
     // Draw point marker
     ctx.beginPath();
@@ -127,45 +140,46 @@ const AnalyticsChart: React.FC = () => {
 
     // Draw data label
     ctx.fillStyle = "#fff";
-    ctx.fillRect(highlightX - 20, highlightY - 30, 40, 20);
+    ctx.fillRect(highlightX - 40, highlightY - 30, 80, 20);
 
     ctx.font = "12px Arial";
     ctx.fillStyle = "#333";
     ctx.textAlign = "center";
-    ctx.fillText("19K", highlightX, highlightY - 16);
+    ctx.fillText(
+      "₦" + (data[highlightIndex].disbursed / 1000000).toFixed(1) + "M",
+      highlightX,
+      highlightY - 16
+    );
 
-    // Draw month labels
-    const months = [
-      "JAN",
-      "FEB",
-      "MAR",
-      "APR",
-      "MAY",
-      "JUN",
-      "JUL",
-      "AUG",
-      "SEP",
-      "OCT",
-      "NOV",
-      "DEC",
-    ];
+    // Draw x-axis labels
     ctx.fillStyle = "#6B7280";
     ctx.font = "10px Arial";
 
-    months.forEach((month, i) => {
-      const x = (width / 12) * i + width / 24;
-      ctx.fillText(month, x, height - 5);
+    labels.forEach((label, i) => {
+      const x = (width / divisions) * i + width / divisions / 2;
+      ctx.fillText(label, x, height - 5);
     });
 
     // Draw Y-axis labels
-    const yLabels = ["0", "500", "1K", "1.5K", "2K", "2.5K", "3K"];
-    ctx.textAlign = "right";
+    const getValueLabel = (value: number) => {
+      if (value >= 1000000000) {
+        return (value / 1000000000).toFixed(1) + "B";
+      } else if (value >= 1000000) {
+        return (value / 1000000).toFixed(1) + "M";
+      } else if (value >= 1000) {
+        return (value / 1000).toFixed(0) + "k";
+      }
+      return value.toString();
+    };
 
-    yLabels.forEach((label, i) => {
-      const y = height - (height / (yLabels.length - 1)) * i;
-      ctx.fillText(label, 30, y);
-    });
-  }, []);
+    const ySteps = 6;
+    for (let i = 0; i <= ySteps; i++) {
+      const value = (maxValue / ySteps) * i;
+      const y = height - height * 0.8 * (i / ySteps) - height * 0.1;
+      ctx.textAlign = "right";
+      ctx.fillText(getValueLabel(value), 30, y);
+    }
+  }, [timeFilter, monthlyData, yearlyData]); // Rerun when timeFilter or data changes
 
   return (
     <div className="analytics-chart">

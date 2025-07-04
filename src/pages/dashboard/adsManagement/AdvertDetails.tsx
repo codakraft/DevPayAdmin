@@ -29,220 +29,219 @@ export default function AdvertDetails({ values, setFieldValue }: Props) {
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.mediaOptions}>
-        {mediaOptions.map((option) => (
+      {/* Loan Product Details Fields */}
+      <div
+        className={styles.loanProductGrid}
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "24px",
+          marginBottom: "32px",
+          background: "#faf9fd",
+          padding: "32px",
+          borderRadius: "12px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+        }}
+      >
+        <div>
           <label
-            key={option}
             className={styles.option}
-            htmlFor={`media-${option}`}
+            style={{ fontWeight: 600, marginBottom: 8 }}
           >
-            <input
-              type="radio"
-              id={`media-${option}`}
-              name="mediaType"
-              value={option}
-              checked={values.mediaType === option}
-              onChange={() => handleMediaSelect(option)}
-            />
-            {option}
+            Name
           </label>
-        ))}
-      </div>
-
-      <input
-        type="text"
-        placeholder="Title"
-        className={styles.titleInput}
-        value={values.title}
-        onChange={(e) => setFieldValue("title", e.target.value)}
-      />
-
-      <TextEditor values={values} setFieldValue={setFieldValue} />
-
-      {selectedMedia === "Single Image" && (
-        <label className={styles.uploadBox} htmlFor="single-upload">
-          {values.upload ? (
-            <div className={styles.imagePreview}>
-              <img src={URL.createObjectURL(values.upload)} alt="preview" />
-              <button
-                type="button"
-                className={styles.cancelButton}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setFieldValue("upload", null);
-                }}
-              >
-                <CloseImageUpload />
-              </button>
-            </div>
-          ) : (
-            <>
-              <UploadImage className={styles.uploadIcon} />
-              <p>
-                <span className={styles.greenText}>Upload</span> or drag and
-                drop file here
-                <br />
-                JPG, PNG (max 6MB)
-              </p>
-            </>
-          )}
           <input
-            type="file"
-            id="single-upload"
-            accept="image/*"
-            className={styles.hiddenInput}
-            onChange={(e) =>
-              setFieldValue("upload", e.target.files?.[0] || null)
-            }
+            type="text"
+            className={styles.titleInput}
+            style={{ width: "120%", maxWidth: "100%" }}
+            placeholder="Enter product name"
+            value={values.name || ""}
+            onChange={(e) => setFieldValue("name", e.target.value)}
           />
-        </label>
-      )}
-
-      {selectedMedia === "Carousel" && (
-        <div className={styles.carouselContainer}>
-          {carouselImages.map((file, index) => (
-            <label key={index} className={styles.uploadBox}>
-              {file ? (
-                <div className={styles.imagePreview}>
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt={`carousel-${index}`}
-                  />
-                  <button
-                    type="button"
-                    className={styles.cancelButton}
-                    onClick={() => {
-                      const updated = [...carouselImages];
-                      updated.splice(index, 1);
-                      setCarouselImages(updated);
-                      setFieldValue("carousel", updated);
-                    }}
-                  >
-                    <CloseImageUpload />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <UploadImage className={styles.uploadIcon} />
-                  <p>
-                    <span className={styles.greenText}>Upload</span> or drag and
-                    drop file
-                    <br />
-                    JPG, PNG (max 6MB)
-                  </p>
-                </>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                className={styles.hiddenInput}
-                onChange={(e) => {
-                  const newFile = e.target.files?.[0];
-                  if (!newFile) return;
-                  const updated = [...carouselImages];
-                  updated[index] = newFile;
-                  setCarouselImages(updated);
-                  setFieldValue("carousel", updated);
-                }}
-              />
-            </label>
-          ))}
-
-          {/* Add new slot */}
-          <button
-            type="button"
-            className={styles.addMoreBox}
-            onClick={() => {
-              const updated = [...carouselImages, null];
-              setCarouselImages(updated);
-              setFieldValue("carousel", updated);
+        </div>
+        <div>
+          <label
+            className={styles.option}
+            style={{ fontWeight: 600, marginBottom: 8 }}
+          >
+            Code
+          </label>
+          <input
+            type="text"
+            className={styles.titleInput}
+            style={{ width: "120%", maxWidth: "100%" }}
+            placeholder="Enter product code"
+            value={values.code || ""}
+            onChange={(e) => setFieldValue("code", e.target.value)}
+          />
+        </div>
+        <div>
+          <label
+            className={styles.option}
+            style={{ fontWeight: 600, marginBottom: 8 }}
+          >
+            Minimum Loan Amount
+          </label>
+          <input
+            type="number"
+            className={styles.titleInput}
+            style={{ width: "120%", maxWidth: "100%" }}
+            placeholder="e.g. 100000"
+            value={values.minLoanAmount || ""}
+            onChange={(e) => setFieldValue("minLoanAmount", e.target.value)}
+          />
+        </div>
+        <div>
+          <label
+            className={styles.option}
+            style={{ fontWeight: 600, marginBottom: 8 }}
+          >
+            Maximum Loan Amount
+          </label>
+          <input
+            type="number"
+            className={styles.titleInput}
+            style={{ width: "120%", maxWidth: "100%" }}
+            placeholder="e.g. 1000000"
+            value={values.maxLoanAmount || ""}
+            onChange={(e) => setFieldValue("maxLoanAmount", e.target.value)}
+          />
+        </div>
+        <div>
+          <label
+            className={styles.option}
+            style={{ fontWeight: 600, marginBottom: 8 }}
+          >
+            Minimum Tenor (In months)
+          </label>
+          <input
+            type="number"
+            className={styles.titleInput}
+            style={{ width: "120%", maxWidth: "100%" }}
+            placeholder="e.g. 6"
+            value={values.minTenor || ""}
+            onChange={(e) => setFieldValue("minTenor", e.target.value)}
+          />
+        </div>
+        <div>
+          <label
+            className={styles.option}
+            style={{ fontWeight: 600, marginBottom: 8 }}
+          >
+            Maximum Tenor (In months)
+          </label>
+          <input
+            type="number"
+            className={styles.titleInput}
+            style={{ width: "120%", maxWidth: "100%" }}
+            placeholder="e.g. 24"
+            value={values.maxTenor || ""}
+            onChange={(e) => setFieldValue("maxTenor", e.target.value)}
+          />
+        </div>
+        <div>
+          <label
+            className={styles.option}
+            style={{ fontWeight: 600, marginBottom: 8 }}
+          >
+            Min Age For Applicants
+          </label>
+          <input
+            type="number"
+            className={styles.titleInput}
+            style={{ width: "120%", maxWidth: "100%" }}
+            placeholder="e.g. 21"
+            value={values.minAge || ""}
+            onChange={(e) => setFieldValue("minAge", e.target.value)}
+          />
+        </div>
+        <div>
+          <label
+            className={styles.option}
+            style={{ fontWeight: 600, marginBottom: 8 }}
+          >
+            Max Age For Applicants
+          </label>
+          <input
+            type="number"
+            className={styles.titleInput}
+            style={{ width: "120%", maxWidth: "100%" }}
+            placeholder="e.g. 60"
+            value={values.maxAge || ""}
+            onChange={(e) => setFieldValue("maxAge", e.target.value)}
+          />
+        </div>
+        <div>
+          <label
+            className={styles.option}
+            style={{ fontWeight: 600, marginBottom: 8 }}
+          >
+            Moratorium (In Days)
+          </label>
+          <input
+            type="number"
+            className={styles.titleInput}
+            style={{ width: "120%", maxWidth: "100%" }}
+            placeholder="e.g. 30"
+            value={values.moratorium || ""}
+            onChange={(e) => setFieldValue("moratorium", e.target.value)}
+          />
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <label
+            className={styles.option}
+            style={{ fontWeight: 600, marginBottom: 8 }}
+          >
+            Notify Approvers Via Email?
+          </label>
+          <div
+            style={{
+              display: "flex",
+              gap: "16px",
+              alignItems: "center",
             }}
           >
-            <AddImage className={styles.plusIcon} />
-          </button>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <input
+                type="radio"
+                name="notifyApprovers"
+                value="yes"
+                checked={values.notifyApprovers === true}
+                onChange={() => setFieldValue("notifyApprovers", true)}
+              />
+              Yes
+            </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <input
+                type="radio"
+                name="notifyApprovers"
+                value="no"
+                checked={values.notifyApprovers === false}
+                onChange={() => setFieldValue("notifyApprovers", false)}
+              />
+              No
+            </label>
+          </div>
         </div>
-      )}
-
-      {selectedMedia === "Banner" && (
-        <label className={styles.uploadBanner} htmlFor="banner-upload">
-          {values.banner ? (
-            <div className={styles.imagePreview}>
-              <img src={URL.createObjectURL(values.banner)} alt="banner" />
-              <button
-                type="button"
-                className={styles.cancelButton}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setFieldValue("banner", null);
-                }}
-              >
-                <CloseImageUpload />
-              </button>
-            </div>
-          ) : (
-            <>
-              <UploadImage className={styles.uploadIcon} />
-              <p>
-                <span className={styles.greenText}>Upload</span> or drag and
-                drop file here
-                <br />
-                JPG, PNG (max 6MB)
-              </p>
-            </>
-          )}
-          <input
-            type="file"
-            id="banner-upload"
-            accept="image/*"
-            className={styles.hiddenInput}
-            onChange={(e) =>
-              setFieldValue("banner", e.target.files?.[0] || null)
-            }
-          />
-        </label>
-      )}
-
-      {selectedMedia === "Video" && (
-        <label className={styles.uploadVideo} htmlFor="video-upload">
-          <UploadVideo className={styles.uploadIcon} />
-          <p>
-            <span className={styles.greenText}>Upload</span> or drag and drop
-            video
-            <br />
-            MP4, MOV (max 10MB)
-          </p>
-          <input
-            type="file"
-            id="video-upload"
-            accept="video/*"
-            className={styles.hiddenInput}
-            onChange={(e) =>
-              setFieldValue("video", e.target.files?.[0] || null)
-            }
-          />
-        </label>
-      )}
-
-      {selectedMedia === "Text" && (
-        <input
-          type="url"
-          placeholder="Add link here"
-          className={styles.linkInput}
-          value={values.link}
-          onChange={(e) => setFieldValue("link", e.target.value)}
-        />
-      )}
-
-      <label htmlFor="" className={styles.linkLabel}>
-        <p>Link</p>
-        <input
-          type="text"
-          className={styles.linkInput}
-          placeholder="Add link here"
-          value={values.link}
-          onChange={(e) => setFieldValue("link", e.target.value)}
-        />
-      </label>
+      </div>
     </div>
   );
 }

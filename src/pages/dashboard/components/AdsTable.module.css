@@ -43,12 +43,27 @@
 
 .badge {
   display: inline-block;
-  background-color: #d1fae5;
-  color: #065f46;
   padding: 0.25rem 0.5rem;
   border-radius: 9999px;
   font-size: 0.8rem;
   font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* Status-specific badge styles */
+.badge.active {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+.badge.pending {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.badge.rejected {
+  background-color: #fecaca;
+  color: #dc2626;
 }
 
 .ellipsisBtn {
@@ -66,4 +81,140 @@
 .customTable td:last-child {
   text-align: right;
   padding-right: 1rem;
+}
+
+.clickableRow {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.clickableRow:hover {
+  background-color: #f9fafb;
+}
+
+/* Search and Filter Controls */
+.tableControls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.searchContainer {
+  flex: 1;
+  min-width: 300px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #0a78eb;
+  box-shadow: 0 0 0 3px rgba(10, 120, 235, 0.1);
+}
+
+.searchInput::placeholder {
+  color: #9ca3af;
+}
+
+.filtersContainer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filterSelect,
+.dateFilter {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: white;
+  transition: border-color 0.2s ease;
+  min-width: 120px;
+}
+
+.filterSelect:focus,
+.dateFilter:focus {
+  outline: none;
+  border-color: #0a78eb;
+  box-shadow: 0 0 0 3px rgba(10, 120, 235, 0.1);
+}
+
+.clearFilters {
+  padding: 8px 16px;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clearFilters:hover {
+  background-color: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.noResults {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Export Button */
+.exportBtn {
+  padding: 8px 16px;
+  background-color: #3A7145;
+  color: white;
+  border: 1px solid #3A7145;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.exportBtn:hover {
+  background-color: #0862c7;
+  border-color: #0862c7;
+  box-shadow: 0 2px 4px rgba(10, 120, 235, 0.2);
+}
+
+.exportBtn:active {
+  transform: translateY(1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tableControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .searchContainer {
+    min-width: auto;
+  }
+  
+  .filtersContainer {
+    justify-content: space-between;
+  }
+  
+  .filterSelect,
+  .dateFilter {
+    flex: 1;
+    min-width: auto;
+  }
 }

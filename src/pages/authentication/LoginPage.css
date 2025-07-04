@@ -44,8 +44,8 @@
 }
 
 .logo {
-  height: 36px;
-  width: auto;
+  /* height: 56px; */
+  /* width: auto; */
   max-width: 152px;
 }
 
@@ -153,7 +153,7 @@
 }
 
 .login-button {
-  background-color: #447e55;
+  background-color: #3A7145;
   color: white;
   border: none;
   border-radius: 4px;
@@ -166,7 +166,7 @@
 }
 
 .login-button:hover {
-  background-color: #386847;
+  background-color: #000;
 }
 
 .footer {

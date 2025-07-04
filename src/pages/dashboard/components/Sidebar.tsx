@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import "./Sidebar.css";
-import logoImage from "../../../assets/logoWhite.svg";
+import logoImage from "../../../assets/logoIcon.png";
 import dashboard from "../../../assets/dashboard.svg";
 import feature from "../../../assets/feature.svg";
 import userManagement from "../../../assets/userManagement.svg";
@@ -31,25 +31,30 @@ const dropdownMenus: Record<string, SubMenuItem[]> = {
   ],
   userManagement: [
     { id: "users", label: "All Users", path: "/user-management/all-users" },
-    {
-      id: "flagged",
-      label: "Flagged Users",
-      path: "/user-management/flagged-users",
-    },
-    {
-      id: "suspended",
-      label: "Suspended Users",
-      path: "/user-management/suspended-users",
-    },
+    // {
+    //   id: "flagged",
+    //   label: "Flagged Users",
+    //   path: "/user-management/flagged-users",
+    // },
+    // {
+    //   id: "admin",
+    //   label: "Admin Users",
+    //   path: "/user-management/suspended-users",
+    // },
   ],
   communication: [
-    { id: "email", label: "Email", path: "/communication/email" },
+    { id: "all-loan", label: "All Loans", path: "/loan" },
     {
-      id: "notifications",
-      label: "Notifications",
-      path: "/communication/notifications",
+      id: "unpaid-loan",
+      label: "Unpaid Loans",
+      // path: "/loan/unpaid-loan",
+      path: "/loan/unpaid-loans",
     },
-    { id: "chat", label: "Chat", path: "/communication/chat" },
+    {
+      id: "ongoing",
+      label: "Ongoing Collections Report",
+      path: "/loan/ongoing-collections",
+    },
   ],
 };
 
@@ -79,6 +84,7 @@ const Sidebar: React.FC = () => {
     <aside className="sidebar">
       <div className="logo-container">
         <img src={logoImage} alt="Japaflex" className="logo" />
+        {/* <h2 className="logo-text">deVpay</h2> */}
       </div>
 
       <nav className="navigation">
@@ -94,7 +100,7 @@ const Sidebar: React.FC = () => {
             </Link>
           </li>
 
-          <li
+          {/* <li
             className={`nav-item ${openDropdowns.features ? "expanded" : ""} ${
               isPathActive("/features") ? "active" : ""
             }`}
@@ -129,9 +135,9 @@ const Sidebar: React.FC = () => {
                 ))}
               </ul>
             )}
-          </li>
+          </li> */}
 
-          <li
+          {/* <li
             className={`nav-item ${
               openDropdowns.userManagement ? "expanded" : ""
             } ${isPathActive("/user-management") ? "active" : ""}`}
@@ -172,7 +178,7 @@ const Sidebar: React.FC = () => {
                 ))}
               </ul>
             )}
-          </li>
+          </li> */}
 
           <li
             className={`nav-item ${
@@ -193,10 +199,10 @@ const Sidebar: React.FC = () => {
 
           <li
             className={`nav-item ${
-              isPathActive("/ads-management") ? "active" : ""
+              isPathActive("/loan-management") ? "active" : ""
             }`}
           >
-            <Link to="/ads-management" className="nav-item-main">
+            <Link to="/loan-management" className="nav-item-main">
               <div className="icon-container">
                 <img
                   src={adsManagement}
@@ -204,7 +210,7 @@ const Sidebar: React.FC = () => {
                   className="icon"
                 />
               </div>
-              <span>ADS Management</span>
+              <span>Loan Requests</span>
             </Link>
           </li>
 
@@ -221,25 +227,27 @@ const Sidebar: React.FC = () => {
                   className="icon"
                 />
               </div>
-              <span>Content Management</span>
+              <span>Loan Product Content</span>
             </Link>
           </li>
 
           <li
-            className={`nav-item ${isPathActive("/analytics") ? "active" : ""}`}
+            className={`nav-item ${
+              isPathActive("/audit-trail/index") ? "active" : ""
+            }`}
           >
-            <Link to="/analytics" className="nav-item-main">
+            <Link to="/audit-trail/index" className="nav-item-main">
               <div className="icon-container">
                 <img src={analytics} alt="Analytics" className="icon" />
               </div>
-              <span>Analytics</span>
+              <span>Audit Trail</span>
             </Link>
           </li>
 
           <li
             className={`nav-item ${
               openDropdowns.communication ? "expanded" : ""
-            } ${isPathActive("/communication") ? "active" : ""}`}
+            } ${isPathActive("/loan") ? "active" : ""}`}
           >
             <div
               className="nav-item-main"
@@ -248,7 +256,7 @@ const Sidebar: React.FC = () => {
               <div className="icon-container">
                 <img src={communication} alt="Communication" className="icon" />
               </div>
-              <span>Communication</span>
+              <span>Loans</span>
               <span
                 className={`chevron ${
                   openDropdowns.communication ? "open" : ""

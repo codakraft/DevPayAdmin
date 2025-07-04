@@ -1,15 +1,37 @@
 import React from "react";
 import "./UserAnalysisChart.css";
 
-const UserAnalysisChart: React.FC = () => {
-  const malePercentage = 64.2;
-  const femalePercentage = 48.6;
+interface UserAnalysisChartProps {
+  timeFilter: "month" | "year";
+}
+
+const UserAnalysisChart: React.FC<UserAnalysisChartProps> = ({
+  timeFilter,
+}) => {
+  // Different gender distribution data based on time filter
+  const userData = {
+    month: {
+      malePercentage: 64.2,
+      femalePercentage: 35.8,
+    },
+    year: {
+      malePercentage: 52.7,
+      femalePercentage: 47.3,
+    },
+  };
+
+  const { malePercentage, femalePercentage } = userData[timeFilter];
+
+  // Calculate the dominant percentage for the donut center display
+  const dominantPercentage = Math.max(malePercentage, femalePercentage);
+  const dominantGender = malePercentage > femalePercentage ? "male" : "female";
 
   return (
     <div className="user-analysis-chart">
       <div className="donut-chart">
         <div className="donut-hole">
-          <span>64%</span>
+          <span>{Math.round(dominantPercentage)}%</span>
+          <small>{dominantGender === "male" ? "Male" : "Female"}</small>
         </div>
       </div>
 
@@ -17,12 +39,12 @@ const UserAnalysisChart: React.FC = () => {
         <div className="gender-item">
           <div className="gender-marker male"></div>
           <span className="gender-label">Male</span>
-          <span className="gender-value">{malePercentage}%</span>
+          <span className="gender-value">{malePercentage.toFixed(1)}%</span>
         </div>
         <div className="gender-item">
           <div className="gender-marker female"></div>
           <span className="gender-label">Female</span>
-          <span className="gender-value">{femalePercentage}%</span>
+          <span className="gender-value">{femalePercentage.toFixed(1)}%</span>
         </div>
       </div>
     </div>
