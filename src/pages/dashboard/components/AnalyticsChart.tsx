@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useMemo } from "react";
 import "./AnalyticsChart.css";
+import { DashboardDataAnalytics, DashboardMetric } from "../../../types/types";
 
 interface DataPoint {
   month: string;
@@ -9,9 +10,13 @@ interface DataPoint {
 
 interface AnalyticsChartProps {
   timeFilter: "month" | "year";
+  data?: DashboardDataAnalytics;
 }
 
-const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ timeFilter }) => {
+const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
+  timeFilter,
+  data,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Data for monthly view wrapped in useMemo to prevent re-creation on each render
@@ -31,6 +36,11 @@ const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ timeFilter }) => {
       { month: "DEC", disbursed: 40000000, requested: 48000000 },
     ],
     []
+  );
+
+  const disbursedMonthlyData = useMemo<DashboardMetric[]>(
+    () => data?.disbursements?.currentYearMonthly || [],
+    [data]
   );
 
   // Data for yearly view wrapped in useMemo

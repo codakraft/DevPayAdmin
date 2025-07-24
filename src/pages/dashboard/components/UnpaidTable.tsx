@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./AdsTable.module.css";
+import { LoanRequest } from "../loanRequest/components/loanTable";
 
 const dummyData = [
   {
@@ -71,7 +72,11 @@ const dummyData = [
   },
 ];
 
-export default function UnpaidTable() {
+interface LoanRequestTableProps {
+  data: LoanRequest[];
+}
+
+export default function UnpaidTable({ data }: LoanRequestTableProps) {
   const [selected, setSelected] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -79,15 +84,15 @@ export default function UnpaidTable() {
 
   // Filter data based on search query and date filter
   const filteredData = useMemo(() => {
-    return dummyData.filter((loan) => {
+    return data.filter((loan) => {
       // Search filter - searches in name and account number
       const searchMatch =
         searchQuery === "" ||
-        loan.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.accountNo.toLowerCase().includes(searchQuery.toLowerCase());
+        loan.userFullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loan.userEmail.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Date filter
-      const dateMatch = dateFilter === "" || loan.dateCreated === dateFilter;
+      const dateMatch = dateFilter === "" || loan.createdAt === dateFilter;
 
       return searchMatch && dateMatch;
     });
@@ -97,7 +102,7 @@ export default function UnpaidTable() {
     selected.length === filteredData.length && filteredData.length > 0;
 
   const toggleAll = () => {
-    setSelected(isAllSelected ? [] : filteredData.map((row) => row.id));
+    setSelected(isAllSelected ? [] : filteredData.map((row) => Number(row.id)));
   };
 
   const toggleOne = (id: number) => {
@@ -120,7 +125,7 @@ export default function UnpaidTable() {
     const headers = [
       "Date Created",
       "Name",
-      "Account No.",
+      // "Account No.",
       "Loan Amount",
       "Tenure (Months)",
       "Unpaid Principal",
@@ -133,14 +138,14 @@ export default function UnpaidTable() {
       headers.join(","), // Header row
       ...filteredData.map((row) =>
         [
-          row.dateCreated,
-          `"${row.name}"`, // Wrap in quotes to handle names with commas
-          row.accountNo,
-          row.loanAmount,
-          row.tenureMonths,
-          row.unpaidPrincipal,
-          row.unpaidInterest,
-          row.totalUnpaid,
+          row.createdAt,
+          `"${row.userFullName}"`, // Wrap in quotes to handle names with commas
+          row.userEmail,
+          row.amount.toLocaleString(),
+          row.durationInMonths,
+          row.amount.toLocaleString(),
+          row.dueDate,
+          row.amount.toLocaleString(),
         ].join(",")
       ),
     ].join("\n");
@@ -220,7 +225,7 @@ export default function UnpaidTable() {
             <th>Loan Amount</th>
             <th>Tenure(Months)</th>
             <th>Unpaid Principal</th>
-            <th>Unpaid Interest</th>
+            <th>Due Date</th>
             <th>Total Unpaid</th>
             <th></th>
           </tr>
@@ -236,30 +241,30 @@ export default function UnpaidTable() {
             filteredData.map((row) => (
               <tr
                 key={row.id}
-                onClick={(e) => handleRowClick(row.id, e)}
+                // onClick={(e) => handleRowClick(Number(row.id), e)}
                 style={{ cursor: "pointer" }}
               >
                 <td onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
-                    checked={selected.includes(row.id)}
-                    onChange={() => toggleOne(row.id)}
+                    checked={selected.includes(Number(row.id))}
+                    onChange={() => toggleOne(Number(row.id))}
                   />
                 </td>
                 <td>
                   <div className={styles.adDetails}>
                     <div>
-                      <p>{row.dateCreated}</p>
+                      <p>{row.createdAt}</p>
                     </div>
                   </div>
                 </td>
-                <td>{row.name}</td>
-                <td>{row.accountNo}</td>
-                <td>₦{row.loanAmount.toLocaleString()}</td>
-                <td>{row.tenureMonths} months</td>
-                <td>₦{row.unpaidPrincipal.toLocaleString()}</td>
-                <td>₦{row.unpaidInterest.toLocaleString()}</td>
-                <td>₦{row.totalUnpaid.toLocaleString()}</td>
+                <td>{row.userFullName}</td>
+                <td>{row.userEmail}</td>
+                <td>₦{row.amount.toLocaleString()}</td>
+                <td>{row.durationInMonths} months</td>
+                <td>₦{row.amount.toLocaleString()}</td>
+                <td>{row.dueDate}</td>
+                <td>₦{row.amount.toLocaleString()}</td>
                 <td onClick={(e) => e.stopPropagation()}>
                   <button
                     className={styles.ellipsisBtn}

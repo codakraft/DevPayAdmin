@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./AdsTable.module.css";
+import { LoanRequest } from "../loanRequest/components/loanTable";
 
 const dummyData = [
   {
@@ -71,7 +72,11 @@ const dummyData = [
   },
 ];
 
-export default function AllCollectionsTable() {
+interface LoanRequestTableProps {
+  data: LoanRequest[];
+}
+
+export default function AllCollectionsTable({ data }: LoanRequestTableProps) {
   const [selected, setSelected] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -94,15 +99,16 @@ export default function AllCollectionsTable() {
 
   // Filter data based on search query and date filter
   const filteredData = useMemo(() => {
-    return dummyData.filter((loan) => {
+    return data.filter((loan) => {
+      console.log("loan", loan);
       // Search filter - searches in name and account number
       const searchMatch =
         searchQuery === "" ||
-        loan.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.accountNo.toLowerCase().includes(searchQuery.toLowerCase());
+        loan.userFullName.toLowerCase().includes(searchQuery.toLowerCase());
+      // loan.accountNo.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Date filter
-      const dateMatch = dateFilter === "" || loan.dateCreated === dateFilter;
+      const dateMatch = dateFilter === "" || loan.createdAt === dateFilter;
 
       return searchMatch && dateMatch;
     });
@@ -112,7 +118,7 @@ export default function AllCollectionsTable() {
     selected.length === filteredData.length && filteredData.length > 0;
 
   const toggleAll = () => {
-    setSelected(isAllSelected ? [] : filteredData.map((row) => row.id));
+    setSelected(isAllSelected ? [] : filteredData.map((row) => Number(row.id)));
   };
 
   const exportToCSV = () => {
@@ -120,7 +126,7 @@ export default function AllCollectionsTable() {
     const headers = [
       "Date Created",
       "Name",
-      "Account No.",
+      // "Account No.",
       "Loan Amount",
       "Tenure (Months)",
       "Pending Principal",
@@ -133,14 +139,14 @@ export default function AllCollectionsTable() {
       headers.join(","), // Header row
       ...filteredData.map((row) =>
         [
-          row.dateCreated,
-          `"${row.name}"`, // Wrap in quotes to handle names with commas
-          row.accountNo,
-          row.loanAmount,
-          row.tenureMonths,
-          row.pendingPrincipal,
-          row.pendingInterest,
-          row.totalPending,
+          row.createdAt,
+          `"${row.userFullName}"`, // Wrap in quotes to handle names with commas
+          // row.accountNo,
+          row.amount,
+          row.durationInMonths,
+          row.amount,
+          (row.amount * 0.045 || 0).toLocaleString(),
+          row.amount,
         ].join(",")
       ),
     ].join("\n");
@@ -216,7 +222,7 @@ export default function AllCollectionsTable() {
             </th>
             <th>Date Created</th>
             <th>Name</th>
-            <th>Account No.</th>
+            {/* <th>Account No.</th> */}
             <th>Loan Amount</th>
             <th>Tenure(Months)</th>
             <th>Pending Principal</th>
@@ -228,31 +234,31 @@ export default function AllCollectionsTable() {
         <tbody>
           {filteredData.map((row) => (
             <tr
-              key={`${row.id}-${row.name}`}
-              onClick={(e) => handleRowClick(row.id, e)}
+              key={`${row.id}-${row.userFullName}`}
+              onClick={(e) => handleRowClick(Number(row.id), e)}
               className={styles.clickableRow}
             >
               <td onClick={(e) => e.stopPropagation()}>
                 <input
                   type="checkbox"
-                  checked={selected.includes(row.id)}
-                  onChange={() => toggleOne(row.id)}
+                  checked={selected.includes(Number(row.id))}
+                  onChange={() => toggleOne(Number(row.id))}
                 />
               </td>
               <td>
                 <div className={styles.adDetails}>
                   <div>
-                    <p>{row.dateCreated}</p>
+                    <p>{row.createdAt}</p>
                   </div>
                 </div>
               </td>
-              <td>{row.name}</td>
-              <td>{row.accountNo}</td>
-              <td>₦{row.loanAmount.toLocaleString()}</td>
-              <td>{row.tenureMonths} months</td>
-              <td>₦{row.pendingPrincipal.toLocaleString()}</td>
-              <td>₦{row.pendingInterest.toLocaleString()}</td>
-              <td>₦{row.totalPending.toLocaleString()}</td>
+              <td>{row.userFullName}</td>
+              {/* <td>{row.accountNo}</td> */}
+              <td>₦{row.amount.toLocaleString()}</td>
+              <td>{row.durationInMonths} months</td>
+              <td>₦{row.amount.toLocaleString()}</td>
+              <td>₦{(row.amount * 0.045 || 0).toLocaleString()}</td>
+              <td>₦{(row.amount * 0.045 + row.amount).toLocaleString()}</td>
               <td onClick={(e) => e.stopPropagation()}>
                 <button
                   className={styles.ellipsisBtn}

@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Button from "../../../ui/components/button/button";
 import "./loanDetails.css";
 
 const LoanDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const row = location.state?.row;
   const [showModal, setShowModal] = useState(false);
   const [modalAction, setModalAction] = useState<"approve" | "reject" | null>(
     null
@@ -14,29 +16,21 @@ const LoanDetails: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [approvedAmount, setApprovedAmount] = useState("");
 
-  // Mock data - in real app, fetch based on ID
-  const loanData = {
-    id: id,
-    applicantName: "Fayemi Kayode",
-    bvn: "32345678901",
-    email: "fayemi.kayode@example.com",
-    phone: "+234 123 4567 890",
-    dateCreated: "06-03-2025",
-    loanAmount: "₦500,000",
-    amountRequested: "₦1,000,000",
-    status: "Active",
-    purpose: "Business Expansion",
-    employmentStatus: "Employed",
-    monthlyIncome: "₦350,000",
-    creditScore: 750,
-    collateral: "Property Documents",
-    tenor: "12 months",
-    interestRate: "4.5%",
-    monthlyRepayment: "₦45,833",
-    approvalDate: "08-03-2025",
-    disbursementDate: "10-03-2025",
-    nextPaymentDate: "10-04-2025",
-  };
+  console.log("Loan ID from params:", row);
+
+  // Use row from navigation state if available, else fallback to mock data
+  const loanData = row;
+
+  // Calculate monthly repayment
+  let monthlyRepayment = "";
+  if (loanData?.amount && loanData?.durationInMonths) {
+    const principal = Number(loanData.amount);
+    const interestRate = 4.5 / 100;
+    const totalWithInterest = principal + principal * interestRate;
+    monthlyRepayment = `₦${(
+      totalWithInterest / loanData.durationInMonths
+    ).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  }
 
   const handleApprove = () => {
     setModalAction("approve");
@@ -128,30 +122,32 @@ const LoanDetails: React.FC = () => {
         <div className="info-card">
           <div className="card-header">
             <h2>Applicant Information</h2>
-            <span className={`status-badge ${loanData.status.toLowerCase()}`}>
-              {loanData.status}
+            <span
+              className={`status-badge ${loanData?.statusDisplay?.toLowerCase()}`}
+            >
+              {loanData?.statusDisplay}
             </span>
           </div>
           <div className="info-grid">
             <div className="info-item">
               <span className="label">Full Name</span>
-              <span className="value">{loanData.applicantName}</span>
+              <span className="value">{loanData?.userFullName}</span>
             </div>
-            <div className="info-item">
+            {/* <div className="info-item">
               <span className="label">BVN</span>
-              <span className="value">{loanData.bvn}</span>
-            </div>
+              <span className="value">{loanData?.bvn}</span>
+            </div> */}
             <div className="info-item">
               <span className="label">Email</span>
-              <span className="value">{loanData.email}</span>
+              <span className="value">{loanData?.userEmail}</span>
             </div>
             <div className="info-item">
               <span className="label">Phone</span>
-              <span className="value">{loanData.phone}</span>
+              <span className="value">08045647363</span>
             </div>
             <div className="info-item">
               <span className="label">Employment Status</span>
-              <span className="value">{loanData.employmentStatus}</span>
+              <span className="value">Employed</span>
             </div>
             <div className="info-item">
               <span className="label">Monthly Income</span>
@@ -168,7 +164,7 @@ const LoanDetails: React.FC = () => {
           <div className="info-grid">
             <div className="info-item highlight">
               <span className="label">Amount Requested</span>
-              <span className="value large">{loanData.amountRequested}</span>
+              <span className="value large">₦{loanData?.amount}</span>
             </div>
             {/* <div className="info-item highlight">
               <span className="label">Approved Amount</span>
@@ -180,15 +176,15 @@ const LoanDetails: React.FC = () => {
             </div>
             <div className="info-item">
               <span className="label">Tenor</span>
-              <span className="value">{loanData.tenor}</span>
+              <span className="value">{loanData.durationInMonths} Months</span>
             </div>
             <div className="info-item">
               <span className="label">Interest Rate</span>
-              <span className="value">{loanData.interestRate}</span>
+              <span className="value">4.5%</span>
             </div>
             <div className="info-item">
               <span className="label">Monthly Repayment</span>
-              <span className="value">{loanData.monthlyRepayment}</span>
+              <span className="value">{monthlyRepayment}</span>
             </div>
           </div>
         </div>
@@ -224,11 +220,12 @@ const LoanDetails: React.FC = () => {
             <div className="employer-info">
               <div className="info-item">
                 <span className="label">Employer</span>
-                <span className="value">KOGI STATE GOVERNMENT</span>
+                <span className="value">N/A</span>
               </div>
               <div className="info-item highlight-salary">
                 <span className="label">Average Monthly Salary</span>
-                <span className="value large">₦28,724.14</span>
+                {/* <span className="value large">₦28,724.14</span> */}
+                <span className="value large">N/A</span>
               </div>
             </div>
 
@@ -280,7 +277,7 @@ const LoanDetails: React.FC = () => {
 
               <div className="table-section">
                 <h3>Existing Loan(s)</h3>
-                <table className="financial-table">
+                {/* <table className="financial-table">
                   <thead>
                     <tr>
                       <th>#</th>
@@ -306,7 +303,7 @@ const LoanDetails: React.FC = () => {
                       <td>₦14,333.33</td>
                     </tr>
                   </tbody>
-                </table>
+                </table> */}
               </div>
             </div>
           </div>

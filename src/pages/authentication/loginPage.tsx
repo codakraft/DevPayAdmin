@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
 import "./LoginPage.css";
 import logoImage from "../../assets/logoIcon.png"; // Adjust the path as necessary
+import { useLoginMutation } from "../../store/apiSlice";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -11,23 +11,44 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Authentication and navigation hooks
-  const { login } = useAuth();
+  const [login, { isLoading: loginLoading }] = useLoginMutation();
+
+  // Navigation hooks
   const navigate = useNavigate();
   const location = useLocation();
 
   // Determine where to redirect after login
   const from = location.state?.from?.pathname ?? "/dashboard";
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
+
+    console.log("Login request:", email, password);
+
     try {
-      await login(email, password);
-      navigate(from, { replace: true });
-    } catch (err: any) {
-      setError("Invalid credentials");
+      const response = await login({ email, password }).unwrap();
+      console.log("Full login response:", response);
+      if (!response.success) {
+        throw new Error("Login failed");
+      }
+      if (response.data && response.data.accessToken) {
+        localStorage.setItem("devpay_admin_token", response.data.accessToken);
+        localStorage.setItem(
+          "devpay_admin_user",
+          JSON.stringify(response.data.user)
+        );
+        console.log("Login successful - data saved");
+        console.log("Navigating to /dashboard...");
+        navigate("/dashboard", { replace: true });
+        console.log("Navigation to /dashboard triggered");
+      } else {
+        throw new Error("No token received");
+      }
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      setError("Login failed. Please check your credentials and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -47,7 +68,6 @@ const LoginPage: React.FC = () => {
       <div className="login-card">
         <div className="logo-container">
           <img src={logoImage} alt="Japaflex" className="logo" />
-          {/* <h2 className="logo-text">deVpay</h2> */}
         </div>
         <div className="login-card-inner">
           <div className="login-content">
@@ -58,7 +78,7 @@ const LoginPage: React.FC = () => {
               Kindly provide the following details
             </p>
 
-            <form onSubmit={handleSubmit} className="login-form">
+            <form onSubmit={handleLogin} className="login-form">
               {error && <div className="error-message">{error}</div>}
 
               <div className="form-group">
@@ -69,7 +89,7 @@ const LoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  disabled={isLoading}
+                  disabled={loginLoading}
                 />
               </div>
 
@@ -82,14 +102,14 @@ const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    disabled={isLoading}
+                    disabled={loginLoading}
                   />
                   <button
                     type="button"
                     onClick={togglePasswordVisibility}
                     className="visibility-toggle"
                     aria-label="Toggle password visibility"
-                    disabled={isLoading}
+                    disabled={loginLoading}
                   >
                     {passwordVisible ? (
                       <span aria-hidden="true">🙈</span>
@@ -105,7 +125,7 @@ const LoginPage: React.FC = () => {
                   onClick={handleForgotPassword}
                   className="forgot-password"
                   type="button"
-                  disabled={isLoading}
+                  disabled={loginLoading}
                 >
                   Forgot password?
                 </button>
@@ -114,9 +134,9 @@ const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 className="login-button"
-                disabled={isLoading}
+                disabled={loginLoading}
               >
-                {isLoading ? "Logging in..." : "Login"}
+                {loginLoading ? "Logging in..." : "Login"}
               </button>
             </form>
           </div>

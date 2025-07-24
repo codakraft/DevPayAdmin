@@ -3,20 +3,22 @@ import "./UserAnalysisChart.css";
 
 interface UserAnalysisChartProps {
   timeFilter: "month" | "year";
+  data: any;
 }
 
 const UserAnalysisChart: React.FC<UserAnalysisChartProps> = ({
   timeFilter,
+  data,
 }) => {
   // Different gender distribution data based on time filter
   const userData = {
     month: {
-      malePercentage: 64.2,
-      femalePercentage: 35.8,
+      malePercentage: data?.malePercentage,
+      femalePercentage: data?.femalePercentage,
     },
     year: {
-      malePercentage: 52.7,
-      femalePercentage: 47.3,
+      malePercentage: data?.malePercentage,
+      femalePercentage: data?.femalePercentage,
     },
   };
 
@@ -39,12 +41,12 @@ const UserAnalysisChart: React.FC<UserAnalysisChartProps> = ({
         <div className="gender-item">
           <div className="gender-marker male"></div>
           <span className="gender-label">Male</span>
-          <span className="gender-value">{malePercentage.toFixed(1)}%</span>
+          <span className="gender-value">{malePercentage?.toFixed(1)}%</span>
         </div>
         <div className="gender-item">
           <div className="gender-marker female"></div>
           <span className="gender-label">Female</span>
-          <span className="gender-value">{femalePercentage.toFixed(1)}%</span>
+          <span className="gender-value">{femalePercentage?.toFixed(1)}%</span>
         </div>
       </div>
     </div>

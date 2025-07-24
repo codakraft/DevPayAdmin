@@ -3,20 +3,22 @@ import React, {
   useState,
   useContext,
   ReactNode,
-  useMemo,
+  useEffect,
 } from "react";
+
+interface User {
+  uid: string;
+  email: string;
+  displayName?: string;
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  user: { email: string } | null;
+  user: User | null;
+  loading: boolean;
 }
-
-const DUMMY_USER = {
-  email: "dahmaular@gmail.com",
-  password: "12345678",
-};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -26,35 +28,92 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<{ email: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // Check if user is logged in on app start
+    const token = localStorage.getItem("devpay_admin_token");
+    const userData = localStorage.getItem("devpay_admin_user");
+
+    if (token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser({
+          uid: parsedUser.id,
+          email: parsedUser.email,
+          displayName: `${parsedUser.firstName} ${parsedUser.lastName}`,
+        });
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        localStorage.removeItem("devpay_admin_token");
+        localStorage.removeItem("devpay_admin_user");
+      }
+    }
+    setLoading(false);
+  }, []);
 
   const login = async (email: string, password: string) => {
-    if (email === DUMMY_USER.email && password === DUMMY_USER.password) {
-      setIsAuthenticated(true);
-      setUser({ email });
-    } else {
-      setIsAuthenticated(false);
-      setUser(null);
-      throw new Error("Invalid credentials");
+    try {
+      const response = await fetch(
+        `${
+          process.env.REACT_APP_API_BASE_URL ||
+          "https://staginlending-fvexbmfhawe7e6ad.southafricanorth-01.azurewebsites.net/api/"
+        }admin/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Login failed");
+      }
+
+      const data = await response.json();
+
+      if (data.token) {
+        localStorage.setItem("devpay_admin_token", data.token);
+        localStorage.setItem("devpay_admin_user", JSON.stringify(data.admin));
+
+        setUser({
+          uid: data.admin.id,
+          email: data.admin.email,
+          displayName: `${data.admin.firstName} ${data.admin.lastName}`,
+        });
+        setIsAuthenticated(true);
+      } else {
+        throw new Error("No token received");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
     }
   };
 
   const logout = async () => {
-    setIsAuthenticated(false);
+    localStorage.removeItem("devpay_admin_token");
+    localStorage.removeItem("devpay_admin_user");
     setUser(null);
+    setIsAuthenticated(false);
   };
 
-  const value = useMemo(
-    () => ({ isAuthenticated, login, logout, user }),
-    [isAuthenticated, user]
+  return (
+    <AuthContext.Provider
+      value={{ isAuthenticated, login, loading, logout, user }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;

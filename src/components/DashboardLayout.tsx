@@ -9,7 +9,7 @@ const DashboardLayout: React.FC = () => {
     <div className="dashboard-container">
       <Sidebar />
       <main className="main-content">
-        <Header username="Jane" />
+        <Header username="Admin" />
         <div className="dashboard-content">
           <Outlet />
         </div>

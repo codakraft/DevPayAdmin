@@ -1,19 +1,22 @@
 import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
 import Button from "../../../ui/components/button/button";
 import "./admin-userprofile.css";
 
 interface AdminUserProfileProps {}
 
 const AdminUserProfile: React.FC<AdminUserProfileProps> = () => {
+  const location = useLocation();
+  const user = location.state?.user;
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: "Adedamola, Agunbiade",
-    email: "damola@gmail.com",
-    role: "Admin Role",
-    branch: "Head Office",
-    phone: "070123456789",
-    gender: "Male",
-    status: "Active",
+    name: user?.fullName || "Adedamola, Agunbiade",
+    email: user?.email || "damola@gmail.com",
+    role: user?.role || "Admin Role",
+    branch: user?.branch || "Head Office",
+    phone: user?.phoneNumber || "070123456789",
+    gender: user?.gender || "Male",
+    status: user?.status || "Active",
   });
 
   const handleDeactivate = () => {

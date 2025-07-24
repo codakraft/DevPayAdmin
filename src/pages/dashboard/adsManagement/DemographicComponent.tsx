@@ -1,6 +1,6 @@
 import styles from "./DemographicComponent.module.css";
 import { AdFormValues } from "./formik-types/formikTypes";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface AdvertDetailsProps {
   values: AdFormValues;
@@ -47,24 +47,40 @@ export default function DemographicComponent({
       values.interest.filter((item) => item !== interest)
     );
   };
-  const [selected, setSelected] = useState<string[]>([]);
 
-  const isAllSelected = selected.length === Fees.length;
+  const selectedFees = useMemo(
+    () => values.interestFeesTable || [],
+    [values.interestFeesTable]
+  );
+
+  const isAllSelected = useMemo(
+    () => selectedFees.length === Fees.length && Fees.length > 0,
+    [selectedFees.length]
+  );
 
   const toggleAll = () => {
-    setSelected(isAllSelected ? [] : Fees.map((row) => row.id));
+    if (isAllSelected) {
+      setFieldValue("interestFeesTable", []);
+    } else {
+      setFieldValue("interestFeesTable", Fees);
+    }
   };
 
-  const toggleOne = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
+  const toggleOne = (fee: { id: string; name: string; amount: string }) => {
+    const feeIndex = selectedFees.findIndex((f) => f.id === fee.id);
+    let newFees;
+    if (feeIndex > -1) {
+      newFees = selectedFees.filter((f) => f.id !== fee.id);
+    } else {
+      newFees = [...selectedFees, fee];
+    }
+    setFieldValue("interestFeesTable", newFees);
   };
 
   return (
     <div className={styles.formContainer}>
       <div className={styles.section}>
-        <p className={styles.labelUnderline}>Interest Fees</p>
+        <p className={styles.labelUnderline}>Fees</p>
         <div className={styles.radioGroup}>
           {/* {GenderOptions.map((option) => (
             <label
@@ -105,19 +121,11 @@ export default function DemographicComponent({
                   <td>
                     <input
                       type="checkbox"
-                      checked={selected.includes(row.id)}
-                      onChange={() => toggleOne(row.id)}
+                      checked={selectedFees.some((f) => f.id === row.id)}
+                      onChange={() => toggleOne(row)}
                     />
                   </td>
-                  <td>
-                    <div className={styles.adDetails}>
-                      {/* <img src={row.image} alt={row.title} /> */}
-                      <div>
-                        {/* <strong>{row.dateCreated}</strong> */}
-                        <p>{row.name}</p>
-                      </div>
-                    </div>
-                  </td>
+                  <td>{row.name}</td>
                   <td>{row.amount}</td>
                 </tr>
               ))}
@@ -189,7 +197,7 @@ export default function DemographicComponent({
                   value="Per Month"
                   checked={values.interestComputationFrequency === "Per Month"}
                   onChange={() =>
-                    setFieldValue("interestComputationFrequency", "Per Month")
+                    setFieldValue("interestComputationFrequency", "0")
                   }
                 />
                 Per Month
@@ -201,7 +209,7 @@ export default function DemographicComponent({
                   value="Per Annum"
                   checked={values.interestComputationFrequency === "Per Annum"}
                   onChange={() =>
-                    setFieldValue("interestComputationFrequency", "Per Annum")
+                    setFieldValue("interestComputationFrequency", "1")
                   }
                 />
                 Per Annum

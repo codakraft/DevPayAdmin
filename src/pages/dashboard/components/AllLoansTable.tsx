@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./AdsTable.module.css";
+import { LoanRequest } from "../loanRequest/components/loanTable";
 
 const dummyData = [
   {
@@ -95,12 +96,22 @@ const dummyData = [
   },
 ];
 
-export default function AllLoanTable() {
+interface LoanRequestTableProps {
+  data: LoanRequest[];
+  onStatusChange?: (status: string) => void;
+}
+
+export default function AllLoanTable({
+  data,
+  onStatusChange,
+}: LoanRequestTableProps) {
   const [selected, setSelected] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("0");
   const [dateFilter, setDateFilter] = useState("");
   const navigate = useNavigate();
+
+  console.log("dataloan", data);
 
   const toggleOne = (id: number) => {
     setSelected((prev) =>
@@ -108,67 +119,67 @@ export default function AllLoanTable() {
     );
   };
 
-  const handleRowClick = (loanId: number, event: React.MouseEvent) => {
+  const handleRowClick = (row: LoanRequest) => {
     // Prevent navigation when clicking on checkbox or ellipsis button
-    const target = event.target as HTMLInputElement;
-    if (target.type === "checkbox" || target.closest("button")) {
-      return;
-    }
-    navigate(`/dashboard/loans/${loanId}`);
+    // const target = event.target as HTMLInputElement;
+    // if (target.type === "checkbox" || target.closest("button")) {
+    //   return;
+    // }
+    // const selectedRow = filteredData.find((row) => Number(row.id) === loanId);
+    navigate(`/dashboard/loans/${row.id}`, { state: { row } });
   };
 
   // Filter data based on search query, status filter, and date filter
   const filteredData = useMemo(() => {
-    return dummyData.filter((loan) => {
-      // Search filter - searches in name, email, BVN, and phone
+    return data.filter((loan) => {
+      // ...existing code...
       const searchMatch =
         searchQuery === "" ||
-        loan.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.BVN.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.phone.toLowerCase().includes(searchQuery.toLowerCase());
+        loan.userFirstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loan.userLastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loan.userEmail.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Status filter
       const statusMatch =
-        statusFilter === "All" || loan.status === statusFilter;
+        statusFilter === "0" || loan.statusDisplay === statusFilter;
 
       // Date filter
-      const dateMatch = dateFilter === "" || loan.dateCreated === dateFilter;
+      const dateMatch = dateFilter === "" || loan.createdAt === dateFilter;
 
       return searchMatch && statusMatch && dateMatch;
     });
-  }, [searchQuery, statusFilter, dateFilter]);
+  }, [searchQuery, statusFilter, dateFilter, data]);
+
+  // Notify parent when statusFilter changes
+  React.useEffect(() => {
+    if (onStatusChange) {
+      onStatusChange(statusFilter);
+    }
+  }, [statusFilter, onStatusChange]);
 
   const isAllSelected =
     selected.length === filteredData.length && filteredData.length > 0;
 
   const toggleAll = () => {
-    setSelected(isAllSelected ? [] : filteredData.map((row) => row.id));
+    setSelected(isAllSelected ? [] : filteredData.map((row) => Number(row.id)));
   };
 
   const exportToCSV = () => {
     const headers = [
-      "BVN",
       "First Name",
       "Last Name",
-      "Phone",
       "Email",
-      "Loan Amount",
       "Amount Requested",
       "Date Created",
       "Status",
     ];
 
     const csvData = filteredData.map((loan) => [
-      loan.BVN,
-      loan.firstName,
-      loan.lastName,
-      loan.phone,
-      loan.email,
-      `₦${loan.loanAmount.toLocaleString()}`,
-      `₦${loan.amountRequested.toLocaleString()}`,
-      loan.dateCreated,
+      loan.userFirstName,
+      loan.userLastName,
+      loan.userEmail,
+      `₦${loan.amount.toLocaleString()}`,
+      loan.createdAt,
       loan.status,
     ]);
 
@@ -182,13 +193,15 @@ export default function AllLoanTable() {
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `loans_${new Date().toISOString().split("T")[0]}.csv`
+      `loan_requests_${new Date().toISOString().split("T")[0]}.csv`
     );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+
+  console.log("Filtered Data:", filteredData);
 
   return (
     <div>
@@ -210,10 +223,10 @@ export default function AllLoanTable() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="All">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Pending">Pending</option>
-            <option value="Rejected">Rejected</option>
+            <option value="0">All Status</option>
+            <option value="4">Active</option>
+            <option value="0">Pending</option>
+            <option value="3">Rejected</option>
           </select>
 
           <input
@@ -227,11 +240,11 @@ export default function AllLoanTable() {
             Export CSV
           </button>
 
-          {(searchQuery || statusFilter !== "All" || dateFilter) && (
+          {(searchQuery || statusFilter !== "0" || dateFilter) && (
             <button
               onClick={() => {
                 setSearchQuery("");
-                setStatusFilter("All");
+                setStatusFilter("0");
                 setDateFilter("");
               }}
               className={styles.clearFilters}
@@ -255,11 +268,10 @@ export default function AllLoanTable() {
             <th>Date Created</th>
             <th>First Name</th>
             <th>Last name</th>
-            <th>BVN</th>
             <th>Email</th>
-            <th>Phone Number</th>
+            <th>Loan Purpose</th>
             <th>Loan Amount</th>
-            <th>Amount requested</th>
+            <th>Loan Duration</th>
             <th>Status</th>
             <th></th>
           </tr>
@@ -267,15 +279,15 @@ export default function AllLoanTable() {
         <tbody>
           {filteredData.map((row) => (
             <tr
-              key={`${row.id}-${row.firstName}-${row.lastName}`}
-              onClick={(e) => handleRowClick(row.id, e)}
+              key={`${row.id}-${row.userFirstName}-${row.userLastName}`}
+              onClick={() => handleRowClick(row)}
               className={styles.clickableRow}
             >
               <td>
                 <input
                   type="checkbox"
-                  checked={selected.includes(row.id)}
-                  onChange={() => toggleOne(row.id)}
+                  checked={selected.includes(Number(row.id))}
+                  onChange={() => toggleOne(Number(row.id))}
                 />
               </td>
               <td>
@@ -283,24 +295,23 @@ export default function AllLoanTable() {
                   {/* <img src={row.image} alt={row.title} /> */}
                   <div>
                     {/* <strong>{row.dateCreated}</strong> */}
-                    <p>{row.dateCreated}</p>
+                    <p>{row.createdAt}</p>
                   </div>
                 </div>
               </td>
-              <td>{row.firstName}</td>
-              <td>{row.lastName}</td>
-              <td>{row.BVN}</td>
-              <td>{row.email}</td>
-              <td>{row.phone}</td>
-              <td>₦{row.loanAmount.toLocaleString()}</td>
-              <td>₦{row.amountRequested.toLocaleString()}</td>
+              <td>{row.userFirstName}</td>
+              <td>{row.userLastName}</td>
+              <td>{row.userEmail}</td>
+              <td>{row.purpose}</td>
+              <td>₦{row.amount.toLocaleString()}</td>
+              <td>{row.durationInMonths} Months</td>
               <td>
                 <span
                   className={`${styles.badge} ${
-                    styles[row.status.toLowerCase()]
+                    styles[row.statusDisplay.toLowerCase()]
                   }`}
                 >
-                  {row.status}
+                  {row.statusDisplay}
                 </span>
               </td>
               <td>

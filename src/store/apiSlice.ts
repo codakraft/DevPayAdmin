@@ -1,25 +1,94 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { parseQueryParams } from "../helpers";
+import { AdminUserResponse, CompanyDashboardResponse, CreateLoanData } from "../types/types";
 
 export const apiSlice = createApi({
-  reducerPath: 'api',
+  reducerPath: "api",
   baseQuery: fetchBaseQuery({
-    baseUrl: process.env.REACT_APP_API_BASE_URL || 'https://delta.japaflex.com/api/v1/', // Change as needed
-    prepareHeaders: (headers, { getState }) => {
-      // We'll set the Authorization header per-request
+    baseUrl:
+      "https://staginlending-fvexbmfhawe7e6ad.southafricanorth-01.azurewebsites.net/api/",
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem("devpay_admin_token");
+      console.log("[apiSlice] devpay_admin_token:", token);
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+        console.log("[apiSlice] Authorization header set:", headers.get("Authorization"));
+      } else {
+        console.log("[apiSlice] No token found, Authorization header not set.");
+      }
       return headers;
     },
   }),
   endpoints: (builder) => ({
-    adminLogin: builder.mutation<any, { token: string }>({
-      query: ({ token }) => ({
-        url: 'admin/login',
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    login: builder.mutation<any, { email: string; password: string }>({
+      query: (body) => ({
+        url: `admin/login`,
+        method: "POST",
+        body,
       }),
     }),
+    getDashboard: builder.query<any, void>({
+      query: () => ({
+        url: `support/dashboard`,
+        method: "GET",
+      }),
+    }),
+    getCompanyDashboard: builder.query<CompanyDashboardResponse, { id: string }>({
+      query: ({ id }) => ({
+        url: `support/companies/${id}/dashboard`,
+        method: "GET",
+      }),
+    }),
+    getLoanProduct: builder.query<any, { id: string }>({
+      query: ({ id }) => ({
+        url: `company/loan-products/${id}`,
+        method: "GET",
+      }),
+    }),
+    createLoanProduct: builder.mutation<any, CreateLoanData>({
+      query: (body) => ({
+        url: `company/product/create`,
+        method: "POST",
+        body,
+      }),
+    }),
+    getLoans: builder.query<any, {status: number}>({
+      query: ({status}) => ({
+        url: `company/loans?Status=${status}`,
+        method: "GET",
+      }),
+    }),
+    getCompayLoans: builder.query<any, {status: number}>({
+      query: ({status}) => ({
+        url: `support/loans/status/${status}`,
+        method: "GET",
+      }),
+    }),
+    getAdminUser: builder.query<AdminUserResponse, void>({
+      query: () => ({
+        url: `company/users`,
+        method: "GET",
+      }),
+    }),
+    // updateUserStatus: builder.mutation<any, { id: string; status: string }>({
+    //   query: (params: { id: string; status: string }) => ({
+    //     url: `users/${params.id}/status`,
+    //     method: "PATCH",
+    //     body: {
+    //       status: params.status,
+    //     },
+    //   }),
+    // }),
   }),
 });
 
-export const { useAdminLoginMutation } = apiSlice;
+export const {
+  useLoginMutation,
+  useGetDashboardQuery,
+  useLazyGetLoanProductQuery,
+  useCreateLoanProductMutation,
+  useLazyGetLoansQuery,
+  useLazyGetCompanyDashboardQuery,
+  useGetAdminUserQuery,
+  useLazyGetCompayLoansQuery,
+} = apiSlice;

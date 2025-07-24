@@ -95,7 +95,39 @@ const dummyData = [
   },
 ];
 
-export default function LoanRequestTable() {
+export interface LoanRequest {
+  amount: number;
+  approvedAt: string | null;
+  companyId: string;
+  companyName: string;
+  companyShortName: string;
+  createdAt: string;
+  dueDate: string | null;
+  durationInMonths: number;
+  id: string;
+  isMandateGenerated: boolean;
+  mandateId: string;
+  message: string;
+  productId: string;
+  productInterestRate: number;
+  productName: string;
+  purpose: string;
+  rejectedAt: string | null;
+  status: number;
+  statusDisplay: string;
+  updatedAt: string;
+  userEmail: string;
+  userFirstName: string;
+  userFullName: string;
+  userId: string;
+  userLastName: string;
+}
+
+interface LoanRequestTableProps {
+  data: LoanRequest[];
+}
+
+export default function LoanRequestTable({ data }: LoanRequestTableProps) {
   const [selected, setSelected] = useState<number[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,34 +135,34 @@ export default function LoanRequestTable() {
   const [dateFilter, setDateFilter] = useState("");
   const navigate = useNavigate();
 
+  console.log("Loan Request Data:", data);
+
   // Filter data based on search query, status filter, and date filter
   const filteredData = useMemo(() => {
-    return dummyData.filter((loan) => {
+    return data.filter((loan) => {
       // Search filter - searches in name, email, BVN, and phone
       const searchMatch =
         searchQuery === "" ||
-        loan.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.BVN.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.phone.toLowerCase().includes(searchQuery.toLowerCase());
+        loan.userFirstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loan.userLastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loan.userEmail.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Status filter
       const statusMatch =
-        statusFilter === "All" || loan.status === statusFilter;
+        statusFilter === "All" || loan.statusDisplay === statusFilter;
 
       // Date filter
-      const dateMatch = dateFilter === "" || loan.dateCreated === dateFilter;
+      const dateMatch = dateFilter === "" || loan.createdAt === dateFilter;
 
       return searchMatch && statusMatch && dateMatch;
     });
-  }, [searchQuery, statusFilter, dateFilter]);
+  }, [searchQuery, statusFilter, dateFilter, data]);
 
   const isAllSelected =
     selected.length === filteredData.length && filteredData.length > 0;
 
   const toggleAll = () => {
-    setSelected(isAllSelected ? [] : filteredData.map((row) => row.id));
+    setSelected(isAllSelected ? [] : filteredData.map((row) => Number(row.id)));
   };
 
   const toggleOne = (id: number) => {
@@ -139,8 +171,8 @@ export default function LoanRequestTable() {
     );
   };
 
-  const handleViewLoan = (loanId: number) => {
-    navigate(`/loan-management/details/${loanId}`);
+  const handleViewLoan = (row: LoanRequest) => {
+    navigate(`/loan-management/details/${row.id}`, { state: { row } });
     setDropdownOpen(null);
   };
 
@@ -150,26 +182,20 @@ export default function LoanRequestTable() {
 
   const exportToCSV = () => {
     const headers = [
-      "BVN",
       "First Name",
       "Last Name",
-      "Phone",
       "Email",
-      "Loan Amount",
       "Amount Requested",
       "Date Created",
       "Status",
     ];
 
     const csvData = filteredData.map((loan) => [
-      loan.BVN,
-      loan.firstName,
-      loan.lastName,
-      loan.phone,
-      loan.email,
-      `₦${loan.loanAmount.toLocaleString()}`,
-      `₦${loan.amountRequested.toLocaleString()}`,
-      loan.dateCreated,
+      loan.userFirstName,
+      loan.userLastName,
+      loan.userEmail,
+      `₦${loan.amount.toLocaleString()}`,
+      loan.createdAt,
       loan.status,
     ]);
 
@@ -269,23 +295,26 @@ export default function LoanRequestTable() {
             <th>Date Created</th>
             <th>First Name</th>
             <th>Last name</th>
-            <th>BVN</th>
             <th>Email</th>
-            <th>Phone Number</th>
+            <th>Loan Purpose</th>
             <th>Loan Amount</th>
-            <th>Amount requested</th>
+            <th>Loan Duration</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          {filteredData.map((row) => (
-            <tr key={`${row.id}-${row.firstName}-${row.lastName}`}>
+          {filteredData.map((row: LoanRequest) => (
+            <tr
+              key={`${row.id}-${row.userFirstName}-${row.userLastName}`}
+              style={{ cursor: "pointer" }}
+              onClick={() => handleViewLoan(row)}
+            >
               <td>
                 <input
                   type="checkbox"
-                  checked={selected.includes(row.id)}
-                  onChange={() => toggleOne(row.id)}
+                  checked={selected.includes(Number(row.id))}
+                  onChange={() => toggleOne(Number(row.id))}
                 />
               </td>
               <td>
@@ -293,47 +322,58 @@ export default function LoanRequestTable() {
                   {/* <img src={row.image} alt={row.title} /> */}
                   <div>
                     {/* <strong>{row.dateCreated}</strong> */}
-                    <p>{row.dateCreated}</p>
+                    <p>
+                      {new Date(row.createdAt).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </p>
                   </div>
                 </div>
               </td>
-              <td>{row.firstName}</td>
-              <td>{row.lastName}</td>
-              <td>{row.BVN}</td>
-              <td>{row.email}</td>
-              <td>{row.phone}</td>
-              <td>₦{row.loanAmount.toLocaleString()}</td>
-              <td>₦{row.amountRequested.toLocaleString()}</td>
+              <td>{row.userFirstName}</td>
+              <td>{row.userLastName}</td>
+              <td>{row.userEmail}</td>
+              <td>{row.purpose}</td>
+              <td>₦{row.amount.toLocaleString()}</td>
+              <td>{row.durationInMonths} Months</td>
               <td>
                 <span
                   className={`${styles.badge} ${
-                    styles[row.status.toLowerCase()]
+                    styles[row.statusDisplay.toLowerCase()]
                   }`}
                 >
-                  {row.status}
+                  {row.statusDisplay}
                 </span>
               </td>
               <td>
-                <div style={{ position: "relative" }}>
+                <div style={{ position: "relative", zIndex: 2 }}>
                   <button
                     className={styles.ellipsisBtn}
                     aria-label="More options"
+                    style={{ zIndex: 3, position: "relative" }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleDropdown(row.id);
+                      toggleDropdown(Number(row.id));
                     }}
                   >
                     ...
                   </button>
-                  {dropdownOpen === row.id && (
+                  {dropdownOpen === Number(row.id) && (
                     <div
                       className={styles.dropdownMenu}
                       role="menu"
+                      style={{
+                        zIndex: 10,
+                        position: "absolute",
+                        pointerEvents: "auto",
+                      }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
                         className={styles.dropdownItem}
-                        onClick={() => handleViewLoan(row.id)}
+                        onClick={() => handleViewLoan(row)}
                         role="menuitem"
                       >
                         View Details

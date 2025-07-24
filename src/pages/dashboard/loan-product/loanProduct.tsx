@@ -4,8 +4,28 @@ import AdsTable from "../components/AdsTable";
 import Button from "../../../ui/components/button/button";
 import styles from "../adsManagement/createAdd.module.css";
 import LoanTable from "./product-table";
+import { useLazyGetLoanProductQuery } from "../../../store/apiSlice";
+import { useEffect, useState } from "react";
 
 export default function LoanProduct() {
+  const [data, setData] = useState();
+
+  const [getLoanProduct, { isLoading }] = useLazyGetLoanProductQuery();
+
+  useEffect(() => {
+    const fetchLoans = async () => {
+      const response = await getLoanProduct({
+        id: "6f2e993b-26c9-4175-9021-cdf1106d8466",
+      }).unwrap();
+      if (response?.data) {
+        setData(response.data);
+      }
+
+      console.log("reso", response);
+    };
+    fetchLoans();
+  }, []);
+
   return (
     <>
       <div className={styles.headerFlex}>
@@ -26,7 +46,37 @@ export default function LoanProduct() {
         </Link>
       </div>
 
-      <LoanTable />
+      {isLoading ? (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: 200,
+          }}
+        >
+          <div
+            className="spinner"
+            style={{
+              width: 40,
+              height: 40,
+              border: "4px solid #eee",
+              borderTop: "4px solid #3A7145",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          />
+          <style>
+            {`@keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }`}
+          </style>
+        </div>
+      ) : data ? (
+        <LoanTable data={data} />
+      ) : null}
+      {/* <LoanTable /> */}
     </>
   );
 }

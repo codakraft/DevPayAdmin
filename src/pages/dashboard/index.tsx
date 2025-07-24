@@ -1,20 +1,47 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import "./styles.css";
 import StatCard from "./components/StatCard";
 import AnalyticsChart from "./components/AnalyticsChart";
 import UserAnalysisChart from "./components/UserAnalysisChart";
-import UsersTable from "./components/UsersTable";
+import {
+  useGetDashboardQuery,
+  useLazyGetCompanyDashboardQuery,
+} from "../../store/apiSlice";
+import { DashboardDataAnalytics } from "../../types/types";
 
 const Dashboard: React.FC = () => {
   const [activeTimeFilter, setActiveTimeFilter] = useState<"month" | "year">(
     "month"
   );
 
+  const [dashboardData, setDashboardData] = useState<DashboardDataAnalytics>();
+
+  const [getCompanyDashboard, { isLoading }] =
+    useLazyGetCompanyDashboardQuery();
+
+  // console.log("Dashboard loaded", dashboardData);
+
+  const getDashboard = React.useCallback(async () => {
+    try {
+      const response = await getCompanyDashboard({
+        id: "6f2e993b-26c9-4175-9021-cdf1106d8466",
+      }).unwrap();
+      setDashboardData(response.data);
+      console.log("Dashboard data:", response.data);
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    }
+  }, [getCompanyDashboard]);
+
+  useEffect(() => {
+    getDashboard();
+  }, [getDashboard]);
+
   // Define different stat values based on time filter
   const statsData = useMemo(() => {
     return {
       month: {
-        activeUsers: "14",
+        activeUsers: dashboardData?.users?.thisMonth,
         totalLoanRequests: "₦8,902,000.98",
         loanRequestsChange: "-22%",
         totalDisbursedLoans: "₦12,000,984.98",
@@ -22,7 +49,7 @@ const Dashboard: React.FC = () => {
         totalActiveLoans: "312",
       },
       year: {
-        activeUsers: "145",
+        activeUsers: dashboardData?.users?.thisYear,
         totalLoanRequests: "₦112,500,000.00",
         loanRequestsChange: "+15%",
         totalDisbursedLoans: "₦300,000,000.00",
@@ -64,19 +91,32 @@ const Dashboard: React.FC = () => {
       <div className="stats-grid">
         <StatCard
           title="Total Active Users"
-          value={currentStats.activeUsers}
+          value={
+            activeTimeFilter === "month"
+              ? dashboardData?.users?.thisMonth.toString() || "0"
+              : dashboardData?.users?.thisYear.toString() || "0"
+          }
           change=""
           period={activeTimeFilter === "month" ? "This month" : "This year"}
         />
         <StatCard
           title="Total Loan Requests"
-          value={currentStats.totalLoanRequests}
+          value={
+            activeTimeFilter === "month"
+              ? `₦${dashboardData?.financialMetrics?.averageRequestAmount.toString()}` ||
+                "₦0.00"
+              : `₦${dashboardData?.financialMetrics?.totalRequested.toString()}` ||
+                "₦0.00"
+          }
           change={currentStats.loanRequestsChange}
           period={activeTimeFilter === "month" ? "This month" : "This year"}
         />
         <StatCard
           title="Loan Requests"
-          value="₦20,000,000.00"
+          value={
+            `₦${dashboardData?.financialMetrics?.totalRequested.toString()}` ||
+            "₦0.00"
+          }
           change=""
           period="All time"
         />
@@ -85,19 +125,28 @@ const Dashboard: React.FC = () => {
       <div className="stats-grid">
         <StatCard
           title="Total Disbursed Loans"
-          value={currentStats.totalDisbursedLoans}
+          value={
+            activeTimeFilter === "month"
+              ? `₦${dashboardData?.financialMetrics?.averageDisbursementAmount.toString()}` ||
+                "₦0.00"
+              : `₦${dashboardData?.financialMetrics?.totalDisbursed.toString()}` ||
+                "₦0.00"
+          }
           change={currentStats.disbursedLoansChange}
           period={activeTimeFilter === "month" ? "This month" : "This year"}
         />
         <StatCard
           title="Total Disbursed Loans"
-          value="₦300,000,000.00"
+          value={
+            `₦${dashboardData?.financialMetrics?.totalDisbursed.toString()}` ||
+            "₦0.00"
+          }
           change=""
           period="All time"
         />
         <StatCard
-          title="Total Active Loans"
-          value={currentStats.totalActiveLoans}
+          title="Total Active Users"
+          value={dashboardData?.systemMetrics?.activeUsers.toString() || "0"}
           change=""
           period={activeTimeFilter === "month" ? "This month" : "This year"}
         />
@@ -136,12 +185,15 @@ const Dashboard: React.FC = () => {
               </button>
             </div>
           </div>
-          <AnalyticsChart timeFilter={activeTimeFilter} />
+          <AnalyticsChart timeFilter={activeTimeFilter} data={dashboardData} />
         </div>
 
         <div className="user-analysis-section">
           <h2>User Analysis</h2>
-          <UserAnalysisChart timeFilter={activeTimeFilter} />
+          <UserAnalysisChart
+            timeFilter={activeTimeFilter}
+            data={dashboardData?.analytics}
+          />
         </div>
       </div>
 

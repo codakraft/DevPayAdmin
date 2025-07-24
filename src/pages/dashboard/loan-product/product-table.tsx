@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./productTable.module.css";
+import { useLazyGetLoanProductQuery } from "../../../store/apiSlice";
 
 const dummyData = [
   {
@@ -12,7 +13,7 @@ const dummyData = [
   },
   {
     id: "0014",
-    organization: "Devtage Financial Payroll Lending",
+    organization: "Fairpay Financial Service",
     interestRate: "4.0%",
     loanRange: "100,000 - 1,000,000",
     loanTenor: "12 months",
@@ -20,14 +21,65 @@ const dummyData = [
   },
 ];
 
-export default function LoanTable() {
+interface LoanDataProp {
+  id: string;
+  companyId: string;
+  name: string;
+  shortName: string;
+  description: string;
+  interestRate: number;
+  minAmount: number;
+  maxAmount: number;
+  minTenor: number;
+  maxTenor: number;
+  moratorium: number;
+}
+
+interface LoanData {
+  data: LoanDataProp[];
+}
+// const UsersTable: React.FC<UsersTableProps> = ({ users }) => {
+// export default function LoanTable() {
+const LoanTable: React.FC<LoanData> = ({ data }) => {
   const [selected, setSelected] = useState<string[]>([]);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [tableData, setTableData] = useState(dummyData);
 
-  const isAllSelected = selected.length === dummyData.length;
+  console.log("dataloan", data);
+
+  // Load created loan products from localStorage
+  useEffect(() => {
+    const loadCreatedProducts = () => {
+      const createdProducts = JSON.parse(
+        localStorage.getItem("createdLoanProducts") || "[]"
+      );
+      // Combine dummy data with created products
+      const combinedData = [...dummyData, ...createdProducts];
+      setTableData(combinedData);
+    };
+
+    loadCreatedProducts();
+
+    // Listen for storage changes to update table when new products are created
+    const handleStorageChange = () => {
+      loadCreatedProducts();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    // Also listen for custom event when localStorage is updated within the same tab
+    window.addEventListener("loanProductCreated", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("loanProductCreated", handleStorageChange);
+    };
+  }, []);
+
+  const isAllSelected = selected.length === tableData.length;
 
   const toggleAll = () => {
-    setSelected(isAllSelected ? [] : dummyData.map((row) => row.id));
+    setSelected(isAllSelected ? [] : tableData.map((row) => row.id));
   };
 
   const toggleOne = (id: string) => {
@@ -70,7 +122,7 @@ export default function LoanTable() {
         </tr>
       </thead>
       <tbody>
-        {dummyData.map((row) => (
+        {data.map((row) => (
           <tr key={row.id}>
             <td>
               <input
@@ -84,21 +136,27 @@ export default function LoanTable() {
                 {/* <img src={row.image} alt={row.title} /> */}
                 <div>
                   {/* <strong>{row.dateCreated}</strong> */}
-                  <p>{row.organization}</p>
+                  <p>{row.name}</p>
                 </div>
               </div>
             </td>
-            <td>{row.id}</td>
-            <td>{row.interestRate}</td>
-            <td>{row.loanRange}</td>
-            <td>{row.loanTenor}</td>
+            <td>{row.shortName}</td>
+            <td>{row.interestRate}%</td>
+            <td>
+              {row.minAmount} - {row.maxAmount}
+            </td>
+            <td>
+              {row.minTenor} - {row.maxTenor}
+            </td>
             <td>
               <span
                 className={
-                  row.status === "Active" ? styles.badge : styles.inactivebadge
+                  row.companyId === "Active"
+                    ? styles.badge
+                    : styles.inactivebadge
                 }
               >
-                {row.status}
+                Status
               </span>
             </td>
             <td>
@@ -176,4 +234,6 @@ export default function LoanTable() {
       </tbody>
     </table>
   );
-}
+};
+
+export default LoanTable;

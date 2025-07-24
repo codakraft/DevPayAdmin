@@ -1,14 +1,18 @@
 import React from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Button from "../../../ui/components/button/button";
 import "./loanDetail.css";
 
 const LoanDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const row = location.state?.row;
 
-  // Mock loan data - in real app, fetch based on ID
-  const loanData = {
+  console.log("LoanDetail - ID:", row);
+
+  // Use row from navigation state if available, else fallback to mock data
+  const loanData = row || {
     id: id,
     borrowerName: "Fayemi Kayode",
     loanType: "Personal Loan",
@@ -157,7 +161,7 @@ const LoanDetail: React.FC = () => {
             <div className="card-icon">₦</div>
             <div className="card-content">
               <h3>Current Balance</h3>
-              <p className="amount">{loanData.currentBalance}</p>
+              <p className="amount">{loanData?.amount}</p>
             </div>
           </div>
           <div className="overview-card success">
@@ -189,14 +193,16 @@ const LoanDetail: React.FC = () => {
         <div className="info-section">
           <div className="section-header">
             <h2>Basic Information</h2>
-            <span className={`status-badge ${loanData.status.toLowerCase()}`}>
-              {loanData.status}
+            <span
+              className={`status-badge ${loanData.statusDisplay.toLowerCase()}`}
+            >
+              {loanData.statusDisplay}
             </span>
           </div>
           <div className="info-grid">
             <div className="info-item">
               <span className="label">Borrower Name</span>
-              <span className="value">{loanData.borrowerName}</span>
+              <span className="value">{loanData.userFullName}</span>
             </div>
             <div className="info-item">
               <span className="label">Loan Type</span>
