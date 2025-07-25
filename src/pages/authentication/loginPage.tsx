@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./LoginPage.css";
 import logoImage from "../../assets/logoIcon.png"; // Adjust the path as necessary
-import { useLoginMutation } from "../../store/apiSlice";
+import { useAuth } from "../../context/AuthContext";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -11,7 +11,7 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [login, { isLoading: loginLoading }] = useLoginMutation();
+  const { login, loading: authLoading } = useAuth();
 
   // Navigation hooks
   const navigate = useNavigate();
@@ -25,27 +25,10 @@ const LoginPage: React.FC = () => {
     setError(null);
     setIsLoading(true);
 
-    console.log("Login request:", email, password);
-
     try {
-      const response = await login({ email, password }).unwrap();
-      console.log("Full login response:", response);
-      if (!response.success) {
-        throw new Error("Login failed");
-      }
-      if (response.data && response.data.accessToken) {
-        localStorage.setItem("devpay_admin_token", response.data.accessToken);
-        localStorage.setItem(
-          "devpay_admin_user",
-          JSON.stringify(response.data.user)
-        );
-        console.log("Login successful - data saved");
-        console.log("Navigating to /dashboard...");
-        navigate("/dashboard", { replace: true });
-        console.log("Navigation to /dashboard triggered");
-      } else {
-        throw new Error("No token received");
-      }
+      await login(email, password);
+      // AuthContext will set isAuthenticated, so navigation will work
+      navigate("/dashboard", { replace: true });
     } catch (error: any) {
       console.error("Login failed:", error);
       setError("Login failed. Please check your credentials and try again.");
@@ -89,7 +72,7 @@ const LoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  disabled={loginLoading}
+                  disabled={authLoading}
                 />
               </div>
 
@@ -102,14 +85,14 @@ const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    disabled={loginLoading}
+                    disabled={authLoading}
                   />
                   <button
                     type="button"
                     onClick={togglePasswordVisibility}
                     className="visibility-toggle"
                     aria-label="Toggle password visibility"
-                    disabled={loginLoading}
+                    disabled={authLoading}
                   >
                     {passwordVisible ? (
                       <span aria-hidden="true">🙈</span>
@@ -125,7 +108,7 @@ const LoginPage: React.FC = () => {
                   onClick={handleForgotPassword}
                   className="forgot-password"
                   type="button"
-                  disabled={loginLoading}
+                  disabled={authLoading}
                 >
                   Forgot password?
                 </button>
@@ -134,9 +117,9 @@ const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 className="login-button"
-                disabled={loginLoading}
+                disabled={authLoading}
               >
-                {loginLoading ? "Logging in..." : "Login"}
+                {authLoading ? "Logging in..." : "Login"}
               </button>
             </form>
           </div>

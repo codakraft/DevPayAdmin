@@ -5,6 +5,7 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
+import { useLoginMutation } from "../store/apiSlice";
 
 interface User {
   uid: string;
@@ -30,6 +31,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [loginMutation, { isLoading: loginLoading }] = useLoginMutation();
 
   useEffect(() => {
     // Check if user is logged in on app start
@@ -56,34 +58,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch(
-        `${
-          process.env.REACT_APP_API_BASE_URL ||
-          "https://staginlending-fvexbmfhawe7e6ad.southafricanorth-01.azurewebsites.net/api/"
-        }admin/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Login failed");
-      }
-
-      const data = await response.json();
-
-      if (data.token) {
-        localStorage.setItem("devpay_admin_token", data.token);
-        localStorage.setItem("devpay_admin_user", JSON.stringify(data.admin));
-
+      const response = await loginMutation({ email, password }).unwrap();
+      // RTK Query returns { success, data: { accessToken, user } }
+      if (response.data && response.data.accessToken && response.data.user) {
+        localStorage.setItem("devpay_admin_token", response.data.accessToken);
+        localStorage.setItem(
+          "devpay_admin_user",
+          JSON.stringify(response.data.user)
+        );
         setUser({
-          uid: data.admin.id,
-          email: data.admin.email,
-          displayName: `${data.admin.firstName} ${data.admin.lastName}`,
+          uid: response.data.user.id,
+          email: response.data.user.email,
+          displayName: `${response.data.user.firstName} ${response.data.user.lastName}`,
         });
         setIsAuthenticated(true);
       } else {
@@ -104,7 +90,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, login, loading, logout, user }}
+      value={{
+        isAuthenticated,
+        login,
+        loading: loading || loginLoading,
+        logout,
+        user,
+      }}
     >
       {children}
     </AuthContext.Provider>
