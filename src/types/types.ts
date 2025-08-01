@@ -127,3 +127,40 @@ export interface AdminUser {
   lastLoginAt: string | null;
   role: string;
 }
+
+export interface WalletResponse {
+  success: boolean;
+  message: string;
+  data: WalletData;
+}
+
+export interface WalletData {
+  id: string;
+  companyId: string;
+  companyName: string;
+  balance: number;
+  totalCredits: number;
+  totalDebits: number;
+  isSuperAdminWallet: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FundWalletRequestData {
+  walletId: string;
+  amount: number;
+  email: string;
+  callbackUrl: string;
+}
+
+export interface FundWalletResponse {
+  status: string;
+  message: string;
+  data: FundWalletResponseData;
+}
+
+export interface FundWalletResponseData {
+  accessCode: string;
+  authorizationUrl: string;
+  reference: string;
+}

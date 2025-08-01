@@ -30,8 +30,8 @@ export default function LoanProduct() {
     <>
       <div className={styles.headerFlex}>
         <div>
-          <h1>Loan product</h1>
-          <p>Here is the infoo of your lending application</p>
+          <h1>Lending Products Gallery</h1>
+          <p>Here is the info of your lending application</p>
         </div>
 
         <Link to="/loan-product/creat-loan" className={styles.createAddLink}>

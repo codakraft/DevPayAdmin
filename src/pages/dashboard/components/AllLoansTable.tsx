@@ -107,11 +107,11 @@ export default function AllLoanTable({
 }: LoanRequestTableProps) {
   const [selected, setSelected] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("0");
+  const [statusFilter, setStatusFilter] = useState("2");
   const [dateFilter, setDateFilter] = useState("");
   const navigate = useNavigate();
 
-  console.log("dataloan", data);
+  console.log("dataloanActive", data);
 
   const toggleOne = (id: number) => {
     setSelected((prev) =>
@@ -140,8 +140,14 @@ export default function AllLoanTable({
         loan.userEmail.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Status filter
-      const statusMatch =
-        statusFilter === "0" || loan.statusDisplay === statusFilter;
+      // '2' means All Status, otherwise match the statusDisplay or status code
+      let statusMatch = true;
+      if (statusFilter !== "2") {
+        // Try to match both statusDisplay and status code (as string or number)
+        statusMatch =
+          loan.statusDisplay === statusFilter ||
+          String(loan.status) === statusFilter;
+      }
 
       // Date filter
       const dateMatch = dateFilter === "" || loan.createdAt === dateFilter;
@@ -223,7 +229,7 @@ export default function AllLoanTable({
             onChange={(e) => setStatusFilter(e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="0">All Status</option>
+            <option value="2">All Status</option>
             <option value="4">Active</option>
             <option value="0">Pending</option>
             <option value="3">Rejected</option>

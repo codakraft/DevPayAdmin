@@ -1,6 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { parseQueryParams } from "../helpers";
-import { AdminUserResponse, CompanyDashboardResponse, CreateLoanData } from "../types/types";
+import { AdminUserResponse, CompanyDashboardResponse, CreateLoanData, WalletResponse, FundWalletRequestData, FundWalletResponse } from "../types/types";
 
 export const apiSlice = createApi({
   reducerPath: "api",
@@ -70,15 +69,37 @@ export const apiSlice = createApi({
         method: "GET",
       }),
     }),
-    // updateUserStatus: builder.mutation<any, { id: string; status: string }>({
-    //   query: (params: { id: string; status: string }) => ({
-    //     url: `users/${params.id}/status`,
-    //     method: "PATCH",
-    //     body: {
-    //       status: params.status,
-    //     },
-    //   }),
-    // }),
+    approveLoan: builder.mutation<any, { reason: string; id: string; }>({
+      query: ({ reason, id }) => ({
+        url: `loan/${id}/approve`,
+        method: "POST",
+        body: {
+          reason: reason,
+        },
+      }),
+    }),
+    rejectLoan: builder.mutation<any, { reason: string; id: string; }>({
+      query: ({ reason, id }) => ({
+        url: `loan/${id}/reject`,
+        method: "POST",
+        body: {
+          reason: reason,
+        },
+      }),
+    }),
+    getCompanyWallet: builder.query<WalletResponse, void>({
+      query: () => ({
+        url: `wallet/my-company`,
+        method: "GET",
+      }),
+    }),
+    fundWallet: builder.mutation<FundWalletResponse, FundWalletRequestData>({
+      query: (body) => ({
+        url: `wallet/fund`,
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -91,4 +112,8 @@ export const {
   useLazyGetCompanyDashboardQuery,
   useGetAdminUserQuery,
   useLazyGetCompayLoansQuery,
+  useApproveLoanMutation,
+  useRejectLoanMutation,
+  useGetCompanyWalletQuery,
+  useFundWalletMutation,
 } = apiSlice;

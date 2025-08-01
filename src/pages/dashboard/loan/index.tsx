@@ -11,7 +11,7 @@ export default function AllLoan() {
   const [getLoans, { isLoading: isLoadingCompanyLoans }] =
     useLazyGetLoansQuery();
   const [data, setData] = useState<any[]>([]);
-  const [status, setStatus] = useState("0");
+  const [status, setStatus] = useState("2");
 
   const fetchLoans = React.useCallback(
     async (statusValue: string) => {

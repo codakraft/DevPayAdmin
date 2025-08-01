@@ -32,6 +32,7 @@ import LoanDetails from "./pages/dashboard/loanRequest/loanDetails";
 import LoanDetail from "./pages/dashboard/loan/loanDetail";
 import UnpaidLoan from "./pages/dashboard/loan/unpaid-loan";
 import OngoingCollections from "./pages/dashboard/loan/allCollection";
+import Wallet from "./pages/dashboard/wallet";
 
 function App() {
   return (
@@ -114,6 +115,8 @@ function App() {
                 path="/loan/ongoing-collections"
                 element={<OngoingCollections />}
               />
+
+              <Route path="/wallet" element={<Wallet />} />
             </Route>
           </Route>
 

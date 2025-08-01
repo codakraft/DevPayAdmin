@@ -2,8 +2,44 @@ import React, { useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Button from "../../../ui/components/button/button";
 import "./loanDetails.css";
+import {
+  useApproveLoanMutation,
+  useRejectLoanMutation,
+} from "../../../store/apiSlice";
 
-const LoanDetails: React.FC = () => {
+// SuccessModal component
+const SuccessModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  action: "approve" | "reject" | null;
+}> = ({ open, onClose, action }) => {
+  if (!open) return null;
+  return (
+    <div className="modal-overlay" aria-modal="true">
+      <div className="loan-action-modal success-modal">
+        <div className="modal-header">
+          <h2>Success</h2>
+        </div>
+        <div className="modal-body">
+          <p>
+            {action === "approve"
+              ? "Loan approved successfully!"
+              : action === "reject"
+              ? "Loan rejected successfully!"
+              : "Action completed successfully!"}
+          </p>
+        </div>
+        <div className="modal-footer">
+          <Button variant="primary" size="md" onClick={onClose}>
+            OK
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LoanDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -15,17 +51,32 @@ const LoanDetails: React.FC = () => {
   const [comment, setComment] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [approvedAmount, setApprovedAmount] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   console.log("Loan ID from params:", row);
+
+  const [approveLoan, { isLoading: approveLoading }] = useApproveLoanMutation();
+  const [rejectLoan, { isLoading: rejectLoading }] = useRejectLoanMutation();
 
   // Use row from navigation state if available, else fallback to mock data
   const loanData = row;
 
-  // Calculate monthly repayment
+  // Calculate monthly repayment using productInterestRate from loanData
   let monthlyRepayment = "";
-  if (loanData?.amount && loanData?.durationInMonths) {
+  if (
+    loanData?.amount &&
+    loanData?.durationInMonths &&
+    loanData?.productInterestRate
+  ) {
     const principal = Number(loanData.amount);
-    const interestRate = 4.5 / 100;
+    // productInterestRate may be a string like "4.5%" or a number
+    let interestRate = 0;
+    if (typeof loanData.productInterestRate === "string") {
+      interestRate =
+        parseFloat(loanData.productInterestRate.replace("%", "")) / 100;
+    } else {
+      interestRate = Number(loanData.productInterestRate) / 100;
+    }
     const totalWithInterest = principal + principal * interestRate;
     monthlyRepayment = `₦${(
       totalWithInterest / loanData.durationInMonths
@@ -34,46 +85,18 @@ const LoanDetails: React.FC = () => {
 
   const handleApprove = () => {
     setModalAction("approve");
-    setApprovedAmount(loanData.loanAmount.replace("₦", "").replace(",", ""));
+    setApprovedAmount(loanData.amount);
     setShowModal(true);
   };
 
+  // Add missing handlers and restore modal content
   const handleReject = () => {
     setModalAction("reject");
     setShowModal(true);
   };
 
-  const handleConfirmAction = async () => {
-    setIsProcessing(true);
-
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      if (modalAction === "approve") {
-        console.log(
-          "Approved loan",
-          id,
-          "with amount:",
-          approvedAmount,
-          "and comment:",
-          comment
-        );
-        // Here you would typically update the loan status and redirect
-      } else {
-        console.log("Rejected loan", id, "with comment:", comment);
-        // Here you would typically update the loan status and redirect
-      }
-
-      setShowModal(false);
-      setComment("");
-      setApprovedAmount("");
-      // You might want to navigate back or refresh the data here
-    } catch (error) {
-      console.error("Error processing loan action:", error);
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleBack = () => {
+    navigate(-1);
   };
 
   const handleCloseModal = () => {
@@ -85,12 +108,53 @@ const LoanDetails: React.FC = () => {
     }
   };
 
+  const handleCloseSuccessModal = () => {
+    setShowSuccessModal(false);
+    navigate(-1);
+  };
+
   const getActionButtonText = () => {
     return modalAction === "approve" ? "Approve Loan" : "Reject Loan";
   };
 
-  const handleBack = () => {
-    navigate(-1);
+  const handleConfirmAction = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await approveLoan({
+        id: loanData.id,
+        reason: comment,
+      }).unwrap();
+      if (response.success) {
+        setShowModal(false);
+        setComment("");
+        setApprovedAmount("");
+        setShowSuccessModal(true);
+      }
+    } catch (error) {
+      console.error("Error processing loan action:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRejectAction = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await rejectLoan({
+        id: loanData.id,
+        reason: comment,
+      }).unwrap();
+      if (response.success) {
+        setShowModal(false);
+        setComment("");
+        setApprovedAmount("");
+        setShowSuccessModal(true);
+      }
+    } catch (error) {
+      console.error("Error processing loan action:", error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -369,39 +433,36 @@ const LoanDetails: React.FC = () => {
                 ×
               </button>
             </div>
-
             <div className="modal-body">
               <div className="loan-summary">
                 <h3>Loan Summary</h3>
                 <div className="summary-details">
                   <div className="summary-item">
                     <span className="label">Applicant:</span>
-                    <span className="value">{loanData.applicantName}</span>
+                    <span className="value">{loanData?.applicantName}</span>
                   </div>
                   <div className="summary-item">
                     <span className="label">Amount Requested:</span>
-                    <span className="value">{loanData.amountRequested}</span>
+                    <span className="value">{loanData?.amountRequested}</span>
                   </div>
                   <div className="summary-item">
                     <span className="label">Purpose:</span>
-                    <span className="value">{loanData.purpose}</span>
+                    <span className="value">{loanData?.purpose}</span>
                   </div>
                   <div className="summary-item">
                     <span className="label">Monthly Income:</span>
-                    <span className="value">{loanData.monthlyIncome}</span>
+                    <span className="value">{loanData?.monthlyIncome}</span>
                   </div>
                   <div className="summary-item">
                     <span className="label">Credit Score:</span>
-                    <span className="value">{loanData.creditScore}</span>
+                    <span className="value">{loanData?.creditScore}</span>
                   </div>
                 </div>
               </div>
-
               <div className="action-section">
                 <h3>
                   {modalAction === "approve" ? "Approval" : "Rejection"} Details
                 </h3>
-
                 {modalAction === "approve" && (
                   <div className="approval-info">
                     <p className="info-text">
@@ -409,7 +470,6 @@ const LoanDetails: React.FC = () => {
                       meets all lending criteria and risk assessment
                       requirements.
                     </p>
-
                     <div className="approved-amount-section">
                       <label htmlFor="approvedAmount">Approved Amount *</label>
                       <div className="amount-input-wrapper">
@@ -427,29 +487,29 @@ const LoanDetails: React.FC = () => {
                         />
                       </div>
                       <small className="amount-help-text">
-                        Maximum requested: {loanData.amountRequested}
+                        Maximum requested: {loanData?.amount}
                       </small>
                     </div>
-
                     <div className="approval-terms">
                       <div className="term-item">
                         <span className="label">Interest Rate:</span>
-                        <span className="value">{loanData.interestRate}</span>
+                        <span className="value">
+                          {loanData?.productInterestRate}
+                        </span>
                       </div>
                       <div className="term-item">
                         <span className="label">Tenor:</span>
-                        <span className="value">{loanData.tenor}</span>
+                        <span className="value">
+                          {loanData?.durationInMonths} Months
+                        </span>
                       </div>
                       <div className="term-item">
                         <span className="label">Monthly Repayment:</span>
-                        <span className="value">
-                          {loanData.monthlyRepayment}
-                        </span>
+                        <span className="value">{monthlyRepayment}</span>
                       </div>
                     </div>
                   </div>
                 )}
-
                 {modalAction === "reject" && (
                   <div className="rejection-info">
                     <p className="info-text">
@@ -459,7 +519,6 @@ const LoanDetails: React.FC = () => {
                     </p>
                   </div>
                 )}
-
                 <div className="comment-section">
                   <label htmlFor="comment">
                     {modalAction === "approve"
@@ -482,7 +541,6 @@ const LoanDetails: React.FC = () => {
                 </div>
               </div>
             </div>
-
             <div className="modal-footer">
               <Button
                 variant="outline"
@@ -495,11 +553,15 @@ const LoanDetails: React.FC = () => {
               <Button
                 variant={modalAction === "approve" ? "primary" : "danger"}
                 size="md"
-                onClick={handleConfirmAction}
+                onClick={
+                  modalAction === "approve"
+                    ? handleConfirmAction
+                    : handleRejectAction
+                }
                 disabled={
                   isProcessing ||
                   (modalAction === "reject" && !comment.trim()) ||
-                  (modalAction === "approve" && !approvedAmount.trim())
+                  (modalAction === "approve" && !approvedAmount)
                 }
               >
                 {isProcessing ? (
@@ -514,6 +576,12 @@ const LoanDetails: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Success Modal */}
+      <SuccessModal
+        open={showSuccessModal}
+        onClose={handleCloseSuccessModal}
+        action={modalAction}
+      />
     </div>
   );
 };

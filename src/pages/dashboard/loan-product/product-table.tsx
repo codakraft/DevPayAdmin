@@ -24,6 +24,8 @@ const dummyData = [
 interface LoanDataProp {
   id: string;
   companyId: string;
+  createdAt: string;
+  updatedAt: string;
   name: string;
   shortName: string;
   description: string;
@@ -33,6 +35,14 @@ interface LoanDataProp {
   minTenor: number;
   maxTenor: number;
   moratorium: number;
+  isActive: boolean;
+  interestComputationBasis: number;
+  interestCostComputation: number;
+  notifyApprovalsViaEmail: boolean;
+  paymentScheduleBreakdown: number;
+  paymentScheduleType: number;
+  penaltyOnDefaultPrincipal: number;
+  turnoverEligibilityPercent: number;
 }
 
 interface LoanData {
@@ -156,7 +166,7 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
                     : styles.inactivebadge
                 }
               >
-                Status
+                {row?.isActive ? "Active" : "Inactive"}
               </span>
             </td>
             <td>

@@ -10,9 +10,11 @@ import {
 import { DashboardDataAnalytics } from "../../types/types";
 
 const Dashboard: React.FC = () => {
-  const [activeTimeFilter, setActiveTimeFilter] = useState<"month" | "year">(
-    "month"
-  );
+  const [activeTimeFilter, setActiveTimeFilter] = useState<
+    "month" | "year" | "custom"
+  >("month");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
 
   const [dashboardData, setDashboardData] = useState<DashboardDataAnalytics>();
 
@@ -23,19 +25,24 @@ const Dashboard: React.FC = () => {
 
   const getDashboard = React.useCallback(async () => {
     try {
-      const response = await getCompanyDashboard({
-        id: "6f2e993b-26c9-4175-9021-cdf1106d8466",
-      }).unwrap();
+      let params: any = { id: "6f2e993b-26c9-4175-9021-cdf1106d8466" };
+      if (activeTimeFilter === "custom" && customStartDate && customEndDate) {
+        params.startDate = customStartDate;
+        params.endDate = customEndDate;
+      }
+      const response = await getCompanyDashboard(params).unwrap();
       setDashboardData(response.data);
       console.log("Dashboard data:", response.data);
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
     }
-  }, [getCompanyDashboard]);
+  }, [getCompanyDashboard, activeTimeFilter, customStartDate, customEndDate]);
 
   useEffect(() => {
+    if (activeTimeFilter === "custom" && (!customStartDate || !customEndDate))
+      return;
     getDashboard();
-  }, [getDashboard]);
+  }, [getDashboard, activeTimeFilter, customStartDate, customEndDate]);
 
   // Define different stat values based on time filter
   const statsData = useMemo(() => {
@@ -56,11 +63,47 @@ const Dashboard: React.FC = () => {
         disbursedLoansChange: "+8%",
         totalActiveLoans: "1,254",
       },
+      custom: {
+        activeUsers: "-",
+        totalLoanRequests: "-",
+        loanRequestsChange: "-",
+        totalDisbursedLoans: "-",
+        disbursedLoansChange: "-",
+        totalActiveLoans: "-",
+      },
     };
-  }, []);
+  }, [dashboardData, activeTimeFilter]);
 
   // Get current stats based on time filter
   const currentStats = statsData[activeTimeFilter];
+
+  if (isLoading || !dashboardData) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: 300,
+        }}
+      >
+        <div
+          className="spinner"
+          style={{
+            width: 48,
+            height: 48,
+            border: "5px solid #eee",
+            borderTop: "5px solid #3A7145",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+          }}
+        />
+        <style>
+          {`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}
+        </style>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -85,6 +128,31 @@ const Dashboard: React.FC = () => {
           >
             This Year
           </button>
+          <button
+            className={`filter-btn ${
+              activeTimeFilter === "custom" ? "active" : ""
+            }`}
+            onClick={() => setActiveTimeFilter("custom")}
+          >
+            Custom Range
+          </button>
+          {activeTimeFilter === "custom" && (
+            <span style={{ marginLeft: 16 }}>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                style={{ marginRight: 8 }}
+              />
+              to
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                style={{ marginLeft: 8 }}
+              />
+            </span>
+          )}
         </div>
       </div>
 
@@ -153,48 +221,55 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="charts-container">
-        <div className="analytics-section">
-          <div className="section-header">
-            <h2>Analytics</h2>
-            <div className="chart-legend">
-              <div className="legend-item">
-                <div className="color-indicator active"></div>
-                <span>Loan Disbursed</span>
+        {activeTimeFilter !== "custom" && (
+          <>
+            <div className="analytics-section">
+              <div className="section-header">
+                <h2>Analytics</h2>
+                <div className="chart-legend">
+                  <div className="legend-item">
+                    <div className="color-indicator active"></div>
+                    <span>Loan Disbursed</span>
+                  </div>
+                  <div className="legend-item">
+                    <div className="color-indicator inactive"></div>
+                    <span>Loan request</span>
+                  </div>
+                </div>
+                <div className="time-filter">
+                  <button
+                    className={`filter-btn ${
+                      activeTimeFilter === "month" ? "active" : ""
+                    }`}
+                    onClick={() => setActiveTimeFilter("month")}
+                  >
+                    Month
+                  </button>
+                  <button
+                    className={`filter-btn ${
+                      activeTimeFilter === "year" ? "active" : ""
+                    }`}
+                    onClick={() => setActiveTimeFilter("year")}
+                  >
+                    Year
+                  </button>
+                </div>
               </div>
-              <div className="legend-item">
-                <div className="color-indicator inactive"></div>
-                <span>Loan request</span>
-              </div>
+              <AnalyticsChart
+                timeFilter={activeTimeFilter as "month" | "year"}
+                data={dashboardData}
+              />
             </div>
-            <div className="time-filter">
-              <button
-                className={`filter-btn ${
-                  activeTimeFilter === "month" ? "active" : ""
-                }`}
-                onClick={() => setActiveTimeFilter("month")}
-              >
-                Month
-              </button>
-              <button
-                className={`filter-btn ${
-                  activeTimeFilter === "year" ? "active" : ""
-                }`}
-                onClick={() => setActiveTimeFilter("year")}
-              >
-                Year
-              </button>
-            </div>
-          </div>
-          <AnalyticsChart timeFilter={activeTimeFilter} data={dashboardData} />
-        </div>
 
-        <div className="user-analysis-section">
-          <h2>User Analysis</h2>
-          <UserAnalysisChart
-            timeFilter={activeTimeFilter}
-            data={dashboardData?.analytics}
-          />
-        </div>
+            <div className="user-analysis-section">
+              <h2>User Analysis</h2>
+              <UserAnalysisChart
+                timeFilter={activeTimeFilter as "month" | "year"}
+                data={dashboardData?.analytics}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {/* <div className="users-section">

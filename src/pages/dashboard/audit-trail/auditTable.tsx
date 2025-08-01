@@ -76,6 +76,28 @@ const dummyData = [
 
 export default function AuditTable() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [actionFilter, setActionFilter] = useState("all");
+
+  // Filtered data based on search and action filter
+  const filteredData = dummyData.filter((row) => {
+    const searchMatch =
+      searchQuery === "" ||
+      row.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.status.toLowerCase().includes(searchQuery.toLowerCase());
+
+    let actionMatch = true;
+    if (actionFilter === "approvals") {
+      actionMatch = row.action.toLowerCase().includes("approved loan request");
+    } else if (actionFilter === "rejections") {
+      actionMatch = row.action.toLowerCase().includes("rejected loan request");
+    } else if (actionFilter === "logins") {
+      actionMatch = row.action.toLowerCase().includes("logged in");
+    } else if (actionFilter === "logouts") {
+      actionMatch = row.action.toLowerCase().includes("logged out");
+    } // add more filters as needed
+    return searchMatch && actionMatch;
+  });
 
   const exportToCSV = () => {
     // Define CSV headers
@@ -123,6 +145,18 @@ export default function AuditTable() {
         </div>
 
         <div className={styles.filtersContainer}>
+          <select
+            value={actionFilter}
+            onChange={(e) => setActionFilter(e.target.value)}
+            className={styles.filterSelect}
+            style={{ marginRight: 12 }}
+          >
+            <option value="all">All Actions</option>
+            <option value="approvals">Loan Approvals</option>
+            <option value="rejections">Loan Rejections</option>
+            <option value="logins">Logins</option>
+            <option value="logouts">Logouts</option>
+          </select>
           <button
             onClick={exportToCSV}
             className={styles.exportBtn}
@@ -136,13 +170,6 @@ export default function AuditTable() {
       <table className={styles.customTable}>
         <thead>
           <tr>
-            {/* <th>
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={toggleAll}
-              />
-            </th> */}
             <th>Date</th>
             <th>User</th>
             <th>Action</th>
@@ -151,20 +178,11 @@ export default function AuditTable() {
           </tr>
         </thead>
         <tbody>
-          {dummyData.map((row) => (
+          {filteredData.map((row) => (
             <tr key={row.id}>
-              {/* <td>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(row.id)}
-                  onChange={() => toggleOne(row.id)}
-                />
-              </td> */}
               <td>
                 <div className={styles.adDetails}>
-                  {/* <img src={row.image} alt={row.title} /> */}
                   <div>
-                    {/* <strong>{row.dateCreated}</strong> */}
                     <p>{row.date}</p>
                   </div>
                 </div>
@@ -173,9 +191,7 @@ export default function AuditTable() {
               <td>{row.action}</td>
               <td>
                 <span
-                  className={`${styles.badge} ${
-                    styles[`status${row.status}`]
-                  }`}
+                  className={`${styles.badge} ${styles[`status${row.status}`]}`}
                 >
                   {row.status}
                 </span>

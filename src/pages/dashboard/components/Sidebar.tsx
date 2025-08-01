@@ -180,6 +180,31 @@ const Sidebar: React.FC = () => {
             )}
           </li> */}
 
+          <li className={`nav-item ${isPathActive("/wallet") ? "active" : ""}`}>
+            <Link to="/wallet" className="nav-item-main">
+              <div className="icon-container">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="icon"
+                >
+                  <path
+                    d="M19 7H5C3.9 7 3 7.9 3 9V18C3 19.1 3.9 20 5 20H19C20.1 20 21 19.1 21 18V9C21 7.9 20.1 7 19 7ZM19 18H5V9H19V18ZM16 12C16 13.1 15.1 14 14 14C12.9 14 12 13.1 12 12C12 10.9 12.9 10 14 10C15.1 10 16 10.9 16 12Z"
+                    fill="white"
+                  />
+                  <path
+                    d="M7 6V4C7 2.9 7.9 2 9 2H15C16.1 2 17 2.9 17 4V6H19V4C19 1.8 17.2 0 15 0H9C6.8 0 5 1.8 5 4V6H7Z"
+                    fill="white"
+                  />
+                </svg>
+              </div>
+              <span>Wallet</span>
+            </Link>
+          </li>
+
           <li
             className={`nav-item ${
               isPathActive("/admin-management") ? "active" : ""
@@ -283,7 +308,7 @@ const Sidebar: React.FC = () => {
             )}
           </li>
 
-          <li
+          {/* <li
             className={`nav-item ${
               isPathActive("/system-settings") ? "active" : ""
             }`}
@@ -298,7 +323,7 @@ const Sidebar: React.FC = () => {
               </div>
               <span>Systems Setting</span>
             </Link>
-          </li>
+          </li> */}
         </ul>
       </nav>
     </aside>
