@@ -164,3 +164,41 @@ export interface FundWalletResponseData {
   authorizationUrl: string;
   reference: string;
 }
+
+export interface CompleteFundWalletRequestData {
+  paystackReference: string;
+}
+
+export interface CompleteFundWalletResponse {
+  status: string;
+  message: string;
+  data: {
+    transactionStatus: string;
+    amount: number;
+    reference: string;
+    walletBalance: number;
+  };
+}
+
+export interface WalletTransaction {
+  id: string;
+  walletId: string;
+  amount: number;
+  balanceAfter: number;
+  transactionType: string;
+  description: string;
+  paystackReference?: string;
+  createdAt: string;
+}
+
+export interface WalletTransactionsResponse {
+  success: boolean;
+  message: string;
+  data: WalletTransaction[];
+}
+
+export interface WalletTransactionsRequest {
+  walletId: string;
+  page?: number;
+  pageSize?: number;
+}

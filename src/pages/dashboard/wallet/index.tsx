@@ -3,6 +3,7 @@ import Button from "../../../ui/components/button/button";
 import {
   useGetCompanyWalletQuery,
   useFundWalletMutation,
+  useGetWalletTransactionsQuery,
 } from "../../../store/apiSlice";
 import { useAuth } from "../../../context/AuthContext";
 import "./wallet.css";
@@ -12,7 +13,7 @@ const Wallet: React.FC = () => {
   const [fundAmount, setFundAmount] = useState("");
 
   // Get logged-in user information
-  const { user } = useAuth();
+  const { user, refreshAuth } = useAuth();
 
   // Fetch wallet data from API
   const {
@@ -25,6 +26,17 @@ const Wallet: React.FC = () => {
   // Fund wallet mutation
   const [fundWallet, { isLoading: isFunding }] = useFundWalletMutation();
 
+  // Fetch wallet transactions
+  const {
+    data: transactionsData,
+    isLoading: isLoadingTransactions,
+    error: transactionsError,
+    refetch: refetchTransactions,
+  } = useGetWalletTransactionsQuery(
+    { walletId: walletData?.data?.id || "", page: 1, pageSize: 20 },
+    { skip: !walletData?.data?.id } // Skip the query if walletId is not available
+  );
+
   // Extract wallet information from API response
   const currentBalance = walletData?.data?.balance || 0;
   const totalCredits = walletData?.data?.totalCredits || 0;
@@ -34,39 +46,34 @@ const Wallet: React.FC = () => {
   // Check for payment callback and refetch data
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const reference = urlParams.get("reference") || urlParams.get("trxref");
-    const status = urlParams.get("status");
-    const isPaymentCallback = urlParams.get("payment") === "callback";
-    
-    if (reference || isPaymentCallback) {
+    const hasPaymentCallback =
+      urlParams.get("reference") ||
+      urlParams.get("trxref") ||
+      urlParams.get("payment_status");
+
+    if (hasPaymentCallback) {
       // Payment callback detected
-      console.log("Payment callback detected:", { reference, status, isPaymentCallback });
-      
-      // Show a brief success/failure message
-      if (status === "success" || status === "successful") {
-        // Small delay to ensure the UI has rendered
+      console.log("Payment callback detected, refreshing auth and wallet data");
+
+      // Show success message if payment was successful
+      const paymentStatus = urlParams.get("payment_status");
+      if (paymentStatus === "success") {
         setTimeout(() => {
-          alert("Payment successful! Your wallet will be updated shortly.");
-        }, 500);
-      } else if (status === "cancelled" || status === "failed") {
-        setTimeout(() => {
-          alert("Payment was cancelled or failed. Please try again.");
-        }, 500);
-      } else if (isPaymentCallback && !status) {
-        // Fallback for when only payment=callback is present
-        setTimeout(() => {
-          alert("Payment completed. Refreshing wallet data...");
-        }, 500);
+          alert("Payment successful! Your wallet has been updated.");
+        }, 1000);
       }
-      
-      // Refetch wallet data to get updated balance
+
+      // Refresh authentication state first
+      refreshAuth();
+
+      // Then refetch wallet data and transactions
       refetch();
-      
+      refetchTransactions();
+
       // Clean up URL parameters
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, "", cleanUrl);
+      window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [refetch]);
+  }, [refetch, refreshAuth, refetchTransactions]);
 
   // Mock transaction history
   const recentTransactions = [
@@ -116,6 +123,56 @@ const Wallet: React.FC = () => {
       status: "completed",
     },
   ];
+
+  // Get real transactions or fallback to mock data
+  console.log("Raw transactionsData:", transactionsData);
+  console.log("transactionsData.data:", transactionsData?.data);
+
+  let displayTransactions = [];
+
+  // Check if transactionsData has data
+  if (transactionsData?.data && Array.isArray(transactionsData.data)) {
+    displayTransactions = transactionsData.data.map((transaction) => ({
+      id: transaction.id,
+      type: transaction.transactionType.toLowerCase().includes("funding")
+        ? "credit"
+        : "debit",
+      amount: transaction.amount,
+      description: transaction.description,
+      date: new Date(transaction.createdAt).toLocaleDateString(),
+      time: new Date(transaction.createdAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      status: "completed", // Since all transactions in response appear to be completed
+      reference: transaction.paystackReference,
+      balanceAfter: transaction.balanceAfter,
+    }));
+  } else if (transactionsData && Array.isArray(transactionsData)) {
+    // Handle case where response is directly an array
+    displayTransactions = transactionsData.map((transaction) => ({
+      id: transaction.id,
+      type: transaction.transactionType.toLowerCase().includes("funding")
+        ? "credit"
+        : "debit",
+      amount: transaction.amount,
+      description: transaction.description,
+      date: new Date(transaction.createdAt).toLocaleDateString(),
+      time: new Date(transaction.createdAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      status: "completed",
+      reference: transaction.paystackReference,
+      balanceAfter: transaction.balanceAfter,
+    }));
+  } else {
+    // Fallback to mock data if no real data
+    displayTransactions = recentTransactions;
+  }
+
+  console.log("Final displayTransactions:", displayTransactions);
+  console.log("displayTransactions length:", displayTransactions?.length);
 
   const handleFundWallet = async () => {
     // Early validation
@@ -343,7 +400,9 @@ const Wallet: React.FC = () => {
               <div className="stat-icon transactions">🔄</div>
               <div className="stat-content">
                 <span className="stat-label">Transactions</span>
-                <span className="stat-value">{recentTransactions.length}</span>
+                <span className="stat-value">
+                  {displayTransactions?.length}
+                </span>
               </div>
             </div>
           </div>
@@ -358,32 +417,63 @@ const Wallet: React.FC = () => {
             </div>
 
             <div className="transactions-list">
-              {recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="transaction-item">
-                  <div className="transaction-icon">
-                    <span className={`icon ${transaction.type}`}>
-                      {transaction.type === "credit" ? "↗️" : "↙️"}
-                    </span>
-                  </div>
-                  <div className="transaction-details">
-                    <div className="transaction-description">
-                      {transaction.description}
-                    </div>
-                    <div className="transaction-meta">
-                      {transaction.date} • {transaction.time}
-                    </div>
-                  </div>
-                  <div className="transaction-amount">
-                    <span className={`amount ${transaction.type}`}>
-                      {transaction.type === "credit" ? "+" : "-"}
-                      {formatCurrency(transaction.amount)}
-                    </span>
-                    <span className="transaction-status">
-                      {transaction.status}
-                    </span>
-                  </div>
+              {isLoadingTransactions ? (
+                <div
+                  className="loading-state"
+                  style={{ padding: "20px", textAlign: "center" }}
+                >
+                  Loading transactions...
                 </div>
-              ))}
+              ) : transactionsError ? (
+                <div
+                  className="error-state"
+                  style={{
+                    padding: "20px",
+                    textAlign: "center",
+                    color: "#dc3545",
+                  }}
+                >
+                  Error loading transactions
+                </div>
+              ) : displayTransactions?.length > 0 ? (
+                displayTransactions?.map((transaction) => (
+                  <div key={transaction.id} className="transaction-item">
+                    <div className="transaction-icon">
+                      <span className={`icon ${transaction.type}`}>
+                        {transaction.type === "credit" ? "↗️" : "↙️"}
+                      </span>
+                    </div>
+                    <div className="transaction-details">
+                      <div className="transaction-description">
+                        {transaction.description}
+                      </div>
+                      <div className="transaction-meta">
+                        {transaction.date} • {transaction.time}
+                      </div>
+                    </div>
+                    <div className="transaction-amount">
+                      <span className={`amount ${transaction.type}`}>
+                        {transaction.type === "credit" ? "+" : "-"}
+                        {formatCurrency(transaction.amount)}
+                      </span>
+                      <span className="transaction-status">
+                        {transaction.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div
+                  className="no-transactions"
+                  style={{
+                    padding: "20px",
+                    textAlign: "center",
+                    color: "#666",
+                  }}
+                >
+                  No transactions found
+                </div>
+              )}
             </div>
           </div>
 

@@ -4,6 +4,7 @@ import React, {
   useContext,
   ReactNode,
   useEffect,
+  useCallback,
 } from "react";
 import { useLoginMutation } from "../store/apiSlice";
 
@@ -19,6 +20,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   user: User | null;
   loading: boolean;
+  refreshAuth: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,59 +35,167 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loginMutation, { isLoading: loginLoading }] = useLoginMutation();
 
-  useEffect(() => {
-    // Check if user is logged in on app start
+  const clearAuthData = useCallback(() => {
+    localStorage.removeItem("devpay_admin_token");
+    localStorage.removeItem("devpay_admin_user");
+    setUser(null);
+    setIsAuthenticated(false);
+  }, []);
+
+  const refreshAuth = useCallback(() => {
+    console.log("[AuthContext] Refreshing authentication state");
     const token = localStorage.getItem("devpay_admin_token");
     const userData = localStorage.getItem("devpay_admin_user");
 
     if (token && userData) {
       try {
         const parsedUser = JSON.parse(userData);
-        setUser({
-          uid: parsedUser.id,
-          email: parsedUser.email,
-          displayName: `${parsedUser.firstName} ${parsedUser.lastName}`,
-        });
-        setIsAuthenticated(true);
+        if (parsedUser && parsedUser.id && parsedUser.email) {
+          setUser({
+            uid: parsedUser.id,
+            email: parsedUser.email,
+            displayName: `${parsedUser.firstName || ""} ${
+              parsedUser.lastName || ""
+            }`.trim(),
+          });
+          setIsAuthenticated(true);
+          console.log("[AuthContext] Auth refreshed successfully");
+        } else {
+          console.warn("[AuthContext] Invalid user data during refresh");
+          clearAuthData();
+        }
       } catch (error) {
-        console.error("Error parsing user data:", error);
-        localStorage.removeItem("devpay_admin_token");
-        localStorage.removeItem("devpay_admin_user");
+        console.error("[AuthContext] Error refreshing auth:", error);
+        clearAuthData();
       }
+    } else {
+      console.log("[AuthContext] No auth data found during refresh");
+      clearAuthData();
     }
-    setLoading(false);
-  }, []);
+  }, [clearAuthData]);
+
+  useEffect(() => {
+    // Check if user is logged in on app start
+    const initializeAuth = () => {
+      const token = localStorage.getItem("devpay_admin_token");
+      const userData = localStorage.getItem("devpay_admin_user");
+
+      console.log("[AuthContext] Initializing auth...", {
+        token: !!token,
+        userData: !!userData,
+      });
+
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          console.log("[AuthContext] Parsed user data:", parsedUser);
+
+          // Validate that the parsed user has required fields
+          if (parsedUser && parsedUser.id && parsedUser.email) {
+            setUser({
+              uid: parsedUser.id,
+              email: parsedUser.email,
+              displayName: `${parsedUser.firstName || ""} ${
+                parsedUser.lastName || ""
+              }`.trim(),
+            });
+            setIsAuthenticated(true);
+            console.log("[AuthContext] User authenticated successfully");
+          } else {
+            console.warn("[AuthContext] Invalid user data structure");
+            clearAuthData();
+          }
+        } catch (error) {
+          console.error("[AuthContext] Error parsing user data:", error);
+          clearAuthData();
+        }
+      } else {
+        console.log("[AuthContext] No token or user data found");
+      }
+      setLoading(false);
+    };
+
+    const clearAuthData = () => {
+      localStorage.removeItem("devpay_admin_token");
+      localStorage.removeItem("devpay_admin_user");
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+
+    // Add a small delay to ensure localStorage is accessible
+    setTimeout(initializeAuth, 100);
+
+    // Listen for storage changes (e.g., when user logs in/out in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "devpay_admin_token" || e.key === "devpay_admin_user") {
+        console.log("[AuthContext] Storage changed, refreshing auth");
+        refreshAuth();
+      }
+    };
+
+    // Listen for window focus (helps with Paystack redirect)
+    const handleWindowFocus = () => {
+      console.log("[AuthContext] Window focused, checking auth state");
+      refreshAuth();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("focus", handleWindowFocus);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("focus", handleWindowFocus);
+    };
+  }, [refreshAuth]);
 
   const login = async (email: string, password: string) => {
     try {
       const response = await loginMutation({ email, password }).unwrap();
+      console.log("[AuthContext] Login response:", response);
+
       // RTK Query returns { success, data: { accessToken, user } }
       if (response.data && response.data.accessToken && response.data.user) {
-        localStorage.setItem("devpay_admin_token", response.data.accessToken);
-        localStorage.setItem(
-          "devpay_admin_user",
-          JSON.stringify(response.data.user)
-        );
-        setUser({
-          uid: response.data.user.id,
-          email: response.data.user.email,
-          displayName: `${response.data.user.firstName} ${response.data.user.lastName}`,
-        });
+        const { accessToken, user: userData } = response.data;
+
+        // Store token and user data
+        localStorage.setItem("devpay_admin_token", accessToken);
+        localStorage.setItem("devpay_admin_user", JSON.stringify(userData));
+
+        // Update state
+        const userProfile = {
+          uid: userData.id,
+          email: userData.email,
+          displayName: `${userData.firstName || ""} ${
+            userData.lastName || ""
+          }`.trim(),
+        };
+
+        setUser(userProfile);
         setIsAuthenticated(true);
+
+        console.log("[AuthContext] Login successful, user authenticated");
       } else {
-        throw new Error("No token received");
+        throw new Error(
+          "Invalid response structure - no token or user data received"
+        );
       }
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("[AuthContext] Login error:", error);
+      // Clear any existing auth data on login failure
+      localStorage.removeItem("devpay_admin_token");
+      localStorage.removeItem("devpay_admin_user");
+      setUser(null);
+      setIsAuthenticated(false);
       throw error;
     }
   };
 
   const logout = async () => {
-    localStorage.removeItem("devpay_admin_token");
-    localStorage.removeItem("devpay_admin_user");
-    setUser(null);
-    setIsAuthenticated(false);
+    console.log("[AuthContext] Logging out user");
+    clearAuthData();
+
+    // Optional: redirect to login page
+    window.location.href = "/login";
   };
 
   return (
@@ -96,6 +206,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         loading: loading || loginLoading,
         logout,
         user,
+        refreshAuth,
       }}
     >
       {children}

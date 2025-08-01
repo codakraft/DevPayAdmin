@@ -33,6 +33,7 @@ import LoanDetail from "./pages/dashboard/loan/loanDetail";
 import UnpaidLoan from "./pages/dashboard/loan/unpaid-loan";
 import OngoingCollections from "./pages/dashboard/loan/allCollection";
 import Wallet from "./pages/dashboard/wallet";
+import PaymentSuccess from "./pages/payment-success";
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
 
           <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>

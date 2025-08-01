@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { AdminUserResponse, CompanyDashboardResponse, CreateLoanData, WalletResponse, FundWalletRequestData, FundWalletResponse } from "../types/types";
+import { AdminUserResponse, CompanyDashboardResponse, CreateLoanData, WalletResponse, FundWalletRequestData, FundWalletResponse, CompleteFundWalletRequestData, CompleteFundWalletResponse, WalletTransactionsResponse, WalletTransactionsRequest } from "../types/types";
 
 export const apiSlice = createApi({
   reducerPath: "api",
@@ -100,6 +100,19 @@ export const apiSlice = createApi({
         body,
       }),
     }),
+    completeFundWallet: builder.mutation<CompleteFundWalletResponse, CompleteFundWalletRequestData>({
+      query: (body) => ({
+        url: `wallet/fund/complete`,
+        method: "POST",
+        body,
+      }),
+    }),
+    getWalletTransactions: builder.query<WalletTransactionsResponse, WalletTransactionsRequest>({
+      query: ({ walletId, page = 1, pageSize = 20 }) => ({
+        url: `wallet/${walletId}/transactions?page=${page}&pageSize=${pageSize}`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -116,4 +129,6 @@ export const {
   useRejectLoanMutation,
   useGetCompanyWalletQuery,
   useFundWalletMutation,
+  useCompleteFundWalletMutation,
+  useGetWalletTransactionsQuery,
 } = apiSlice;
