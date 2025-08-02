@@ -113,6 +113,12 @@ export const apiSlice = createApi({
         method: "GET",
       }),
     }),
+    logout: builder.mutation<any, void>({
+      query: () => ({
+        url: `admin/logout`,
+        method: "POST",
+      }),
+    }),
   }),
 });
 
@@ -131,4 +137,5 @@ export const {
   useFundWalletMutation,
   useCompleteFundWalletMutation,
   useGetWalletTransactionsQuery,
+  useLogoutMutation,
 } = apiSlice;

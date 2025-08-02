@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
 import logoImage from "../../../assets/logoIcon.png";
 import dashboard from "../../../assets/dashboard.svg";
@@ -10,6 +10,8 @@ import adsManagement from "../../../assets/adsManagement.svg";
 import analytics from "../../../assets/analytics.svg";
 import communication from "../../../assets/communication.svg";
 import systemsSetting from "../../../assets/systemSetting.svg";
+import { useLogoutMutation } from "../../../store/apiSlice";
+import { useAuth } from "../../../context/AuthContext";
 
 // Define interface for dropdown menu items
 interface SubMenuItem {
@@ -61,6 +63,11 @@ const dropdownMenus: Record<string, SubMenuItem[]> = {
 const Sidebar: React.FC = () => {
   // Get current location for active link styling
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Get auth context and logout mutation
+  const { logout: authLogout } = useAuth();
+  const [logoutMutation, { isLoading: isLoggingOut }] = useLogoutMutation();
 
   // State to track which dropdowns are open
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>(
@@ -78,6 +85,22 @@ const Sidebar: React.FC = () => {
   // Check if a path is active
   const isPathActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(path);
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      // Call the logout API endpoint
+      await logoutMutation().unwrap();
+      console.log("Logout API call successful");
+    } catch (error) {
+      console.error("Logout API call failed:", error);
+      // Continue with logout even if API call fails
+    } finally {
+      // Clear local storage and redirect
+      authLogout();
+      navigate("/login");
+    }
   };
 
   return (
@@ -326,6 +349,35 @@ const Sidebar: React.FC = () => {
           </li> */}
         </ul>
       </nav>
+
+      {/* Logout Button */}
+      <div className="logout-section">
+        <button
+          className="logout-btn"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+        >
+          <div className="icon-container">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="icon"
+            >
+              <path
+                d="M16 17L21 12L16 7M21 12H9M9 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H9"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <span>{isLoggingOut ? "Logging out..." : "Logout"}</span>
+        </button>
+      </div>
     </aside>
   );
 };
