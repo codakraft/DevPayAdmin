@@ -133,7 +133,7 @@ const AdminTable: React.FC = () => {
             <th>Full Name</th>
             <th>Email</th>
             <th>Role</th>
-            <th>Gender</th>
+            {/* <th>Gender</th> */}
             <th>Date Created</th>
             <th></th>
           </tr>
@@ -165,11 +165,11 @@ const AdminTable: React.FC = () => {
               <td>{user.email}</td>
               <td>{user.role}</td>
               {/* <td>{user.phoneNumber}</td> */}
-              <td>{user.gender}</td>
+              {/* <td>{user.gender}</td> */}
               <td>{user.createdAt}</td>
-              <td onClick={(e) => e.stopPropagation()}>
+              {/* <td onClick={(e) => e.stopPropagation()}>
                 <button className="more-options">⋮</button>
-              </td>
+              </td> */}
             </tr>
           ))}
           {filteredUsers.length === 0 && (

@@ -174,7 +174,7 @@ export default function AuditTable() {
             <th>User</th>
             <th>Action</th>
             <th>Status</th>
-            <th></th>
+            {/* <th></th> */}
           </tr>
         </thead>
         <tbody>
@@ -201,7 +201,7 @@ export default function AuditTable() {
                   className={styles.ellipsisBtn}
                   aria-label="More options"
                 >
-                  ...
+                  {/* ... */}
                 </button>
               </td>
             </tr>
