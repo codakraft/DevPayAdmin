@@ -25,7 +25,7 @@ const Disburse: React.FC = () => {
 
   const fetchLoans = React.useCallback(async () => {
     try {
-      const response = await getLoans({ status: 2 }).unwrap();
+      const response = await getLoans({ status: 9 }).unwrap();
       console.log("Fetched approved loans:", response.data);
       if (response?.data?.loans) {
         setLoans(Array.isArray(response.data.loans) ? response.data.loans : []);
@@ -89,8 +89,12 @@ const Disburse: React.FC = () => {
 
   const getStatusBadge = (status: number) => {
     switch (status) {
-      case 2:
-        return <span className="status-badge status-approved">Approved</span>;
+      case 9:
+        return (
+          <span className="status-badge status-approved">
+            Offer Letter Signed
+          </span>
+        );
       default:
         return <span className="status-badge status-unknown">Unknown</span>;
     }

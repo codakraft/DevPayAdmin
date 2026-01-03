@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Button from "../../../ui/components/button/button";
+import { useLazyGetLoansByIDQuery } from "../../../store/apiSlice";
 import "./loanDetail.css";
 
 const LoanDetail: React.FC = () => {
@@ -9,31 +10,102 @@ const LoanDetail: React.FC = () => {
   const location = useLocation();
   const row = location.state?.row;
 
-  console.log("LoanDetail - ID:", row);
+  const [getLoanById, { isLoading }] = useLazyGetLoansByIDQuery();
+  const [loanData, setLoanData] = useState<any>(null);
 
-  // Use row from navigation state if available, else fallback to mock data
-  const loanData = row || {
-    id: id,
-    borrowerName: "Fayemi Kayode",
-    loanType: "Personal Loan",
-    principalAmount: "₦500,000",
-    currentBalance: "₦387,500",
-    monthlyPayment: "₦45,833",
-    nextPaymentDate: "2025-07-15",
-    loanTerm: "12 months",
-    interestRate: "4.5%",
-    status: "Active",
-    disbursementDate: "2025-03-10",
-    maturityDate: "2026-03-10",
-    totalPaid: "₦112,500",
-    remainingPayments: 9,
-    bvn: "32345678901",
-    phone: "+234 123 4567 890",
-    email: "fayemi.kayode@example.com",
-    employmentStatus: "Employed",
-    monthlyIncome: "₦350,000",
-    accountNumber: "1234567890",
-    bankName: "Access Bank",
+  useEffect(() => {
+    const fetchLoanDetails = async () => {
+      if (id) {
+        try {
+          const response = await getLoanById({ id }).unwrap();
+          console.log("Loan details response:", response);
+
+          if (response.success && response.data) {
+            setLoanData(response.data);
+          }
+        } catch (error) {
+          console.error("Error fetching loan details:", error);
+        }
+      }
+    };
+
+    fetchLoanDetails();
+  }, [id, getLoanById]);
+
+  console.log("LoanDetail - ID:", id, "Loan Data:", loanData);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p>Loading loan details...</p>
+      </div>
+    );
+  }
+
+  // Show error or no data state
+  if (!loanData) {
+    return (
+      <div className="error-container">
+        <p>No loan data available</p>
+        <Button variant="primary" size="md" onClick={() => navigate(-1)}>
+          Go Back
+        </Button>
+      </div>
+    );
+  }
+
+  // Format status for display
+  const getStatusDisplay = (status: number) => {
+    const statusMap: Record<number, string> = {
+      0: "Pending",
+      1: "Processing",
+      2: "Approved",
+      3: "Disbursed",
+      4: "Rejected",
+    };
+    return statusMap[status] || "Unknown";
+  };
+
+  const statusDisplay = getStatusDisplay(loanData.status);
+
+  // Format loan data for display
+  const displayData = {
+    ...loanData,
+    userFullName:
+      loanData.userFullName ||
+      `${loanData.userFirstName || ""} ${loanData.userLastName || ""}`.trim(),
+    statusDisplay: statusDisplay,
+    amount: loanData.amount ? `₦${loanData.amount.toLocaleString()}` : "N/A",
+    principalAmount: loanData.amount
+      ? `₦${loanData.amount.toLocaleString()}`
+      : "N/A",
+    interestRate: loanData.interestRate ? `${loanData.interestRate}%` : "N/A",
+    loanTerm: loanData.durationInMonths
+      ? `${loanData.durationInMonths} months`
+      : "N/A",
+    monthlyPayment: loanData.monthlyRepayment
+      ? `₦${loanData.monthlyRepayment.toLocaleString()}`
+      : "N/A",
+    totalPaid: "₦0",
+    remainingPayments: loanData.durationInMonths || 0,
+    currentBalance: loanData.amount
+      ? `₦${loanData.amount.toLocaleString()}`
+      : "N/A",
+    disbursementDate: loanData.disbursedDate || "Not disbursed",
+    maturityDate: loanData.maturityDate || "N/A",
+    nextPaymentDate: "N/A",
+    bvn: loanData.userBVN || "N/A",
+    phone: loanData.userPhoneNumber || "N/A",
+    email: loanData.userEmail || "N/A",
+    employmentStatus: loanData.employmentStatus || "N/A",
+    monthlyIncome: loanData.monthlyIncome
+      ? `₦${loanData.monthlyIncome.toLocaleString()}`
+      : "N/A",
+    accountNumber: loanData.accountNumber || "N/A",
+    bankName: loanData.bankName || "N/A",
+    loanType: loanData.purpose || "Personal Loan",
   };
 
   const transactionHistory = [
@@ -161,30 +233,30 @@ const LoanDetail: React.FC = () => {
             <div className="card-icon">₦</div>
             <div className="card-content">
               <h3>Current Balance</h3>
-              <p className="amount">{loanData?.amount}</p>
+              <p className="amount">{displayData.currentBalance}</p>
             </div>
           </div>
           <div className="overview-card success">
             <div className="card-icon">📈</div>
             <div className="card-content">
               <h3>Total Paid</h3>
-              <p className="amount">{loanData.totalPaid}</p>
+              <p className="amount">{displayData.totalPaid}</p>
             </div>
           </div>
           <div className="overview-card warning">
             <div className="card-icon">📅</div>
             <div className="card-content">
               <h3>Next Payment</h3>
-              <p className="amount">{loanData.monthlyPayment}</p>
-              <small>{loanData.nextPaymentDate}</small>
+              <p className="amount">{displayData.monthlyPayment}</p>
+              <small>{displayData.nextPaymentDate}</small>
             </div>
           </div>
           <div className="overview-card info">
             <div className="card-icon">🏦</div>
             <div className="card-content">
               <h3>Remaining Payments</h3>
-              <p className="amount">{loanData.remainingPayments}</p>
-              <small>out of 12 months</small>
+              <p className="amount">{displayData.remainingPayments}</p>
+              <small>out of {displayData.durationInMonths || 12} months</small>
             </div>
           </div>
         </div>
@@ -194,43 +266,43 @@ const LoanDetail: React.FC = () => {
           <div className="section-header">
             <h2>Basic Information</h2>
             <span
-              className={`status-badge ${loanData.statusDisplay.toLowerCase()}`}
+              className={`status-badge ${displayData.statusDisplay.toLowerCase()}`}
             >
-              {loanData.statusDisplay}
+              {displayData.statusDisplay}
             </span>
           </div>
           <div className="info-grid">
             <div className="info-item">
               <span className="label">Borrower Name</span>
-              <span className="value">{loanData.userFullName}</span>
+              <span className="value">{displayData.userFullName}</span>
             </div>
             <div className="info-item">
               <span className="label">Loan Type</span>
-              <span className="value">{loanData.loanType}</span>
+              <span className="value">{displayData.loanType}</span>
             </div>
             <div className="info-item">
               <span className="label">Principal Amount</span>
-              <span className="value">{loanData.principalAmount}</span>
+              <span className="value">{displayData.principalAmount}</span>
             </div>
             <div className="info-item">
               <span className="label">Interest Rate</span>
-              <span className="value">{loanData.interestRate}</span>
+              <span className="value">{displayData.interestRate}</span>
             </div>
             <div className="info-item">
               <span className="label">Loan Term</span>
-              <span className="value">{loanData.loanTerm}</span>
+              <span className="value">{displayData.loanTerm}</span>
             </div>
             <div className="info-item">
               <span className="label">Disbursement Date</span>
-              <span className="value">{loanData.disbursementDate}</span>
+              <span className="value">{displayData.disbursementDate}</span>
             </div>
             <div className="info-item">
               <span className="label">Maturity Date</span>
-              <span className="value">{loanData.maturityDate}</span>
+              <span className="value">{displayData.maturityDate}</span>
             </div>
             <div className="info-item">
               <span className="label">Monthly Payment</span>
-              <span className="value">{loanData.monthlyPayment}</span>
+              <span className="value">{displayData.monthlyPayment}</span>
             </div>
           </div>
         </div>
@@ -243,31 +315,31 @@ const LoanDetail: React.FC = () => {
           <div className="info-grid">
             <div className="info-item">
               <span className="label">BVN</span>
-              <span className="value">{loanData.bvn}</span>
+              <span className="value">{displayData.bvn}</span>
             </div>
             <div className="info-item">
               <span className="label">Phone</span>
-              <span className="value">{loanData.phone}</span>
+              <span className="value">{displayData.phone}</span>
             </div>
             <div className="info-item">
               <span className="label">Email</span>
-              <span className="value">{loanData.email}</span>
+              <span className="value">{displayData.email}</span>
             </div>
             <div className="info-item">
               <span className="label">Employment Status</span>
-              <span className="value">{loanData.employmentStatus}</span>
+              <span className="value">{displayData.employmentStatus}</span>
             </div>
             <div className="info-item">
               <span className="label">Monthly Income</span>
-              <span className="value">{loanData.monthlyIncome}</span>
+              <span className="value">{displayData.monthlyIncome}</span>
             </div>
             <div className="info-item">
               <span className="label">Account Number</span>
-              <span className="value">{loanData.accountNumber}</span>
+              <span className="value">{displayData.accountNumber}</span>
             </div>
             <div className="info-item">
               <span className="label">Bank</span>
-              <span className="value">{loanData.bankName}</span>
+              <span className="value">{displayData.bankName}</span>
             </div>
           </div>
         </div>

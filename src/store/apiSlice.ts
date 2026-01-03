@@ -99,6 +99,12 @@ export const apiSlice = createApi({
         method: "POST",
       }),
     }),
+    getDisbursements: builder.query<any, void>({
+      query: () => ({
+        url: `loan/disbursements`,
+        method: "GET",
+      }),
+    }),
     getCompanyWallet: builder.query<WalletResponse, void>({
       query: () => ({
         url: `wallet/my-company`,
@@ -151,5 +157,6 @@ export const {
   useGetWalletTransactionsQuery,
   useLogoutMutation,
   useLazyGetLoansByIDQuery,
-  useDisburseLoanMutation
+  useDisburseLoanMutation,
+  useLazyGetDisbursementsQuery
 } = apiSlice;

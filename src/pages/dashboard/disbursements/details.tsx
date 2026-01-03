@@ -286,7 +286,7 @@ const DisbursementDetails: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        {loan.status === 2 && (
+        {loan.status === 9 && (
           <div className="action-buttons">
             <button
               className="disburse-btn"

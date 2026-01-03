@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Button from "../../../ui/components/button/button";
 import "./loanDetails.css";
 import {
   useApproveLoanMutation,
   useRejectLoanMutation,
+  useLazyGetLoansByIDQuery,
 } from "../../../store/apiSlice";
 
 // SuccessModal component
@@ -52,40 +53,39 @@ const LoanDetails = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [approvedAmount, setApprovedAmount] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  console.log("Loan ID from params:", row);
+  const [loanData, setLoanData] = useState<any>(row || null);
 
   const [approveLoan, { isLoading: approveLoading }] = useApproveLoanMutation();
   const [rejectLoan, { isLoading: rejectLoading }] = useRejectLoanMutation();
+  const [getLoanById, { isLoading }] = useLazyGetLoansByIDQuery();
 
-  // Use row from navigation state if available, else fallback to mock data
-  const loanData = row;
+  useEffect(() => {
+    const fetchLoanDetails = async () => {
+      console.log("Fetching loan details for ID:", id);
+      if (id) {
+        try {
+          const response = await getLoanById({ id }).unwrap();
+          console.log("Loan details response:", response);
 
-  // Calculate monthly repayment using productInterestRate from loanData
-  let monthlyRepayment = "";
-  if (
-    loanData?.amount &&
-    loanData?.durationInMonths &&
-    loanData?.productInterestRate
-  ) {
-    const principal = Number(loanData.amount);
-    // productInterestRate may be a string like "4.5%" or a number
-    let interestRate = 0;
-    if (typeof loanData.productInterestRate === "string") {
-      interestRate =
-        parseFloat(loanData.productInterestRate.replace("%", "")) / 100;
-    } else {
-      interestRate = Number(loanData.productInterestRate) / 100;
-    }
-    const totalWithInterest = principal + principal * interestRate;
-    monthlyRepayment = `₦${(
-      totalWithInterest / loanData.durationInMonths
-    ).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  }
+          if (response.success && response.data) {
+            setLoanData(response.data);
+          }
+        } catch (error) {
+          console.error("Error fetching loan details:", error);
+        }
+      } else {
+        console.warn("No loan ID found in URL parameters");
+      }
+    };
+
+    fetchLoanDetails();
+  }, [id, getLoanById]);
+
+  console.log("Loan ID from params:", id, "Loan Data:", loanData);
 
   const handleApprove = () => {
     setModalAction("approve");
-    setApprovedAmount(loanData.amount);
+    setApprovedAmount(loanData?.amount);
     setShowModal(true);
   };
 
@@ -157,6 +157,74 @@ const LoanDetails = () => {
     }
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p>Loading loan details...</p>
+      </div>
+    );
+  }
+
+  // Show error or no data state
+  if (!loanData) {
+    return (
+      <div className="error-container">
+        <p>No loan data available</p>
+        <Button variant="primary" size="md" onClick={() => navigate(-1)}>
+          Go Back
+        </Button>
+      </div>
+    );
+  }
+
+  // Format status for display
+  const getStatusDisplay = (status: number) => {
+    const statusMap: Record<number, string> = {
+      0: "Pending",
+      1: "Processing",
+      2: "Approved",
+      3: "Disbursed",
+      4: "Rejected",
+    };
+    return statusMap[status] || "Unknown";
+  };
+
+  const statusDisplay = getStatusDisplay(loanData.status);
+
+  // Calculate monthly repayment using productInterestRate from loanData
+  let monthlyRepayment = "";
+  if (
+    loanData?.amount &&
+    loanData?.durationInMonths &&
+    loanData?.productInterestRate
+  ) {
+    const principal = Number(loanData.amount);
+    // productInterestRate may be a string like "4.5%" or a number
+    let interestRate = 0;
+    if (typeof loanData.productInterestRate === "string") {
+      interestRate =
+        parseFloat(loanData.productInterestRate.replace("%", "")) / 100;
+    } else {
+      interestRate = Number(loanData.productInterestRate) / 100;
+    }
+    const totalWithInterest = principal + principal * interestRate;
+    monthlyRepayment = `₦${(
+      totalWithInterest / loanData.durationInMonths
+    ).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  }
+
+  // Get salary history data from response
+  const salaryHistory = loanData?.salaryHistory;
+  const averageMonthlySalary = salaryHistory?.averageMonthlySalary
+    ? `₦${Number(salaryHistory.averageMonthlySalary).toLocaleString(undefined, {
+        maximumFractionDigits: 2,
+      })}`
+    : "N/A";
+  const employerName =
+    salaryHistory?.companyName || loanData?.companyName || "N/A";
+
   return (
     <div>
       <div className="page-header">
@@ -186,16 +254,16 @@ const LoanDetails = () => {
         <div className="info-card">
           <div className="card-header">
             <h2>Applicant Information</h2>
-            <span
-              className={`status-badge ${loanData?.statusDisplay?.toLowerCase()}`}
-            >
-              {loanData?.statusDisplay}
+            <span className={`status-badge ${statusDisplay.toLowerCase()}`}>
+              {statusDisplay}
             </span>
           </div>
           <div className="info-grid">
             <div className="info-item">
               <span className="label">Full Name</span>
-              <span className="value">{loanData?.userFullName}</span>
+              <span className="value">
+                {loanData.userFirstName} {loanData.userLastName}
+              </span>
             </div>
             {/* <div className="info-item">
               <span className="label">BVN</span>
@@ -203,19 +271,25 @@ const LoanDetails = () => {
             </div> */}
             <div className="info-item">
               <span className="label">Email</span>
-              <span className="value">{loanData?.userEmail}</span>
+              <span className="value">{loanData.userEmail}</span>
             </div>
             <div className="info-item">
               <span className="label">Phone</span>
-              <span className="value">08045647363</span>
+              <span className="value">
+                {loanData.userPhoneNumber || "08045647363"}
+              </span>
             </div>
             <div className="info-item">
               <span className="label">Employment Status</span>
-              <span className="value">Employed</span>
+              <span className="value">
+                {loanData.employmentStatus || "Employed"}
+              </span>
             </div>
             <div className="info-item">
               <span className="label">Monthly Income</span>
-              <span className="value">{loanData.monthlyIncome}</span>
+              <span className="value">
+                ₦{loanData.monthlyIncome?.toLocaleString() || "N/A"}
+              </span>
             </div>
           </div>
         </div>
@@ -228,7 +302,9 @@ const LoanDetails = () => {
           <div className="info-grid">
             <div className="info-item highlight">
               <span className="label">Amount Requested</span>
-              <span className="value large">₦{loanData?.amount}</span>
+              <span className="value large">
+                ₦{loanData.amount?.toLocaleString()}
+              </span>
             </div>
             {/* <div className="info-item highlight">
               <span className="label">Approved Amount</span>
@@ -244,7 +320,9 @@ const LoanDetails = () => {
             </div>
             <div className="info-item">
               <span className="label">Interest Rate</span>
-              <span className="value">4.5%</span>
+              <span className="value">
+                {loanData.productInterestRate || "4.5"}%
+              </span>
             </div>
             <div className="info-item">
               <span className="label">Monthly Repayment</span>
@@ -284,90 +362,140 @@ const LoanDetails = () => {
             <div className="employer-info">
               <div className="info-item">
                 <span className="label">Employer</span>
-                <span className="value">N/A</span>
+                <span className="value">{employerName}</span>
               </div>
               <div className="info-item highlight-salary">
                 <span className="label">Average Monthly Salary</span>
-                {/* <span className="value large">₦28,724.14</span> */}
-                <span className="value large">N/A</span>
+                <span className="value large">{averageMonthlySalary}</span>
               </div>
             </div>
 
             <div className="financial-tables">
               <div className="table-section">
                 <h3>Salary/Payment History</h3>
-                <table className="financial-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Date</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>1</td>
-                      <td>29-May-2025</td>
-                      <td>₦97,388.47</td>
-                    </tr>
-                    <tr>
-                      <td>2</td>
-                      <td>26-May-2025</td>
-                      <td>₦91,253.45</td>
-                    </tr>
-                    <tr>
-                      <td>3</td>
-                      <td>17-Apr-2025</td>
-                      <td>₦46,407.47</td>
-                    </tr>
-                    <tr>
-                      <td>4</td>
-                      <td>25-Mar-2025</td>
-                      <td>₦43,507.47</td>
-                    </tr>
-                    <tr>
-                      <td>5</td>
-                      <td>3-Mar-2025</td>
-                      <td>₦43,507.47</td>
-                    </tr>
-                    <tr>
-                      <td>6</td>
-                      <td>23-Jan-2025</td>
-                      <td>₦13,007.47</td>
-                    </tr>
-                  </tbody>
-                </table>
+                {salaryHistory ? (
+                  <table className="financial-table">
+                    <thead>
+                      <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Employee Name</td>
+                        <td>{salaryHistory.customerName || "N/A"}</td>
+                      </tr>
+                      <tr>
+                        <td>Total Salary Payments</td>
+                        <td>{salaryHistory.salaryCount || 0}</td>
+                      </tr>
+                      <tr>
+                        <td>Average Monthly Salary</td>
+                        <td>
+                          ₦
+                          {Number(
+                            salaryHistory.averageMonthlySalary || 0
+                          ).toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Latest Salary Amount</td>
+                        <td>
+                          ₦
+                          {Number(
+                            salaryHistory.latestSalaryAmount || 0
+                          ).toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Latest Payment Date</td>
+                        <td>
+                          {salaryHistory.latestPaymentDate
+                            ? new Date(
+                                salaryHistory.latestPaymentDate
+                              ).toLocaleDateString()
+                            : "N/A"}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>First Payment Date</td>
+                        <td>
+                          {salaryHistory.firstPaymentDate
+                            ? new Date(
+                                salaryHistory.firstPaymentDate
+                              ).toLocaleDateString()
+                            : "N/A"}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Minimum Salary</td>
+                        <td>
+                          ₦
+                          {Number(
+                            salaryHistory.minSalaryAmount || 0
+                          ).toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Maximum Salary</td>
+                        <td>
+                          ₦
+                          {Number(
+                            salaryHistory.maxSalaryAmount || 0
+                          ).toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Consistent Months</td>
+                        <td>{salaryHistory.consistentMonths || 0}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                ) : (
+                  <p style={{ textAlign: "center", padding: "20px" }}>
+                    No salary history available
+                  </p>
+                )}
               </div>
 
               <div className="table-section">
                 <h3>Existing Loan(s)</h3>
-                {/* <table className="financial-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Disbursed On</th>
-                      <th>Loan Amount</th>
-                      <th>Outstanding</th>
-                      <th>Monthly Payment</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>1</td>
-                      <td>17-Jun-2025</td>
-                      <td>₦12,000.00</td>
-                      <td>₦22,800.00</td>
-                      <td>₦1,900.00</td>
-                    </tr>
-                    <tr>
-                      <td>2</td>
-                      <td>11-Jun-2025</td>
-                      <td>₦50,000.00</td>
-                      <td>₦86,000.00</td>
-                      <td>₦14,333.33</td>
-                    </tr>
-                  </tbody>
-                </table> */}
+                {salaryHistory?.hasOutstandingLoans ? (
+                  <table className="financial-table">
+                    <thead>
+                      <tr>
+                        <th>Status</th>
+                        <th>Total Outstanding Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Active</td>
+                        <td>
+                          ₦
+                          {Number(
+                            salaryHistory.totalOutstandingAmount || 0
+                          ).toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                ) : (
+                  <p style={{ textAlign: "center", padding: "20px" }}>
+                    No outstanding loans
+                  </p>
+                )}
               </div>
             </div>
           </div>

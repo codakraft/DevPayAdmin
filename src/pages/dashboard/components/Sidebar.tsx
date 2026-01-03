@@ -3,13 +3,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
 import logoImage from "../../../assets/logoIcon.png";
 import dashboard from "../../../assets/dashboard.svg";
-import feature from "../../../assets/feature.svg";
-import userManagement from "../../../assets/userManagement.svg";
+// import feature from "../../../assets/feature.svg";
+// import userManagement from "../../../assets/userManagement.svg";
 import adminManagement from "../../../assets/adminManagement.svg";
 import adsManagement from "../../../assets/adsManagement.svg";
 import analytics from "../../../assets/analytics.svg";
 import communication from "../../../assets/communication.svg";
-import systemsSetting from "../../../assets/systemSetting.svg";
+// import systemsSetting from "../../../assets/systemSetting.svg";
 import { useLogoutMutation } from "../../../store/apiSlice";
 import { useAuth } from "../../../context/AuthContext";
 

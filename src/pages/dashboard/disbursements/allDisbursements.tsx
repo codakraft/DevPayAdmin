@@ -26,7 +26,7 @@ const AllDisbursements: React.FC = () => {
 
   const fetchLoans = React.useCallback(async () => {
     try {
-      const response = await getLoans({ status: 3 }).unwrap();
+      const response = await getLoans({ status: 4 }).unwrap();
       console.log("Fetched disbursed loans:", response.data);
       if (response?.data?.loans) {
         setLoans(Array.isArray(response.data.loans) ? response.data.loans : []);
@@ -90,7 +90,7 @@ const AllDisbursements: React.FC = () => {
 
   const getStatusBadge = (status: number) => {
     switch (status) {
-      case 3:
+      case 4:
         return <span className="status-badge status-disbursed">Disbursed</span>;
       default:
         return <span className="status-badge status-unknown">Unknown</span>;
@@ -99,6 +99,52 @@ const AllDisbursements: React.FC = () => {
 
   const calculateTotalDisbursed = () => {
     return filteredLoans.reduce((total, loan) => total + loan.amount, 0);
+  };
+
+  const exportToCSV = () => {
+    // Create CSV header
+    const headers = [
+      "Date Created",
+      "First Name",
+      "Last Name",
+      "Email",
+      "Loan Purpose",
+      "Loan Amount",
+      "Loan Duration (months)",
+      "Status",
+    ];
+
+    // Create CSV rows
+    const rows = filteredLoans.map((loan) => [
+      formatDate(loan.createdAt),
+      loan.userFirstName || "N/A",
+      loan.userLastName || "N/A",
+      loan.userEmail || "N/A",
+      loan.purpose || "N/A",
+      loan.amount,
+      loan.durationInMonths,
+      "Disbursed",
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+    ].join("\n");
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `disbursements_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -147,6 +193,24 @@ const AllDisbursements: React.FC = () => {
             </span>
           </div>
         </div>
+        <button className="export-btn" onClick={exportToCSV}>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Export to CSV
+        </button>
       </div>
 
       {isLoading ? (

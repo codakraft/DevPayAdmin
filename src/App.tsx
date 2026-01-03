@@ -83,7 +83,7 @@ function App() {
 
               <Route path="/loan-management" element={<LoanRequestPage />} />
               <Route
-                path="/loan-management/details/:userId"
+                path="/loan-management/details/:id"
                 element={<LoanDetails />}
               />
 
