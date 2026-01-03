@@ -5,7 +5,7 @@ export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({
     baseUrl:
-      "https://staginlending-fvexbmfhawe7e6ad.southafricanorth-01.azurewebsites.net/api/",
+      "https://staginlending-fvexbmfhawe7e6ad.southafricanorth-01.azurewebsites.net/api/v1/",
     prepareHeaders: (headers) => {
       const token = localStorage.getItem("devpay_admin_token");
       console.log("[apiSlice] devpay_admin_token:", token);
@@ -57,6 +57,12 @@ export const apiSlice = createApi({
         method: "GET",
       }),
     }),
+    getLoansByID: builder.query<any, {id: string}>({
+      query: ({id}) => ({
+        url: `company/loans/${id}`,
+        method: "GET",
+      }),
+    }),
     getCompayLoans: builder.query<any, {status: number}>({
       query: ({status}) => ({
         url: `support/loans/status/${status}`,
@@ -85,6 +91,12 @@ export const apiSlice = createApi({
         body: {
           reason: reason,
         },
+      }),
+    }),
+    disburseLoan: builder.mutation<any, { id: string; }>({
+      query: ({ id }) => ({
+        url: `loan/${id}/disburse`,
+        method: "POST",
       }),
     }),
     getCompanyWallet: builder.query<WalletResponse, void>({
@@ -138,4 +150,6 @@ export const {
   useCompleteFundWalletMutation,
   useGetWalletTransactionsQuery,
   useLogoutMutation,
+  useLazyGetLoansByIDQuery,
+  useDisburseLoanMutation
 } = apiSlice;

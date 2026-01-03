@@ -34,6 +34,9 @@ import UnpaidLoan from "./pages/dashboard/loan/unpaid-loan";
 import OngoingCollections from "./pages/dashboard/loan/allCollection";
 import Wallet from "./pages/dashboard/wallet";
 import PaymentSuccess from "./pages/payment-success";
+import Disburse from "./pages/dashboard/disbursements";
+import AllDisbursements from "./pages/dashboard/disbursements/allDisbursements";
+import DisbursementDetails from "./pages/dashboard/disbursements/details";
 
 function App() {
   return (
@@ -116,6 +119,13 @@ function App() {
               <Route
                 path="/loan/ongoing-collections"
                 element={<OngoingCollections />}
+              />
+
+              <Route path="/disbursements/disburse" element={<Disburse />} />
+              <Route path="/disbursements/all" element={<AllDisbursements />} />
+              <Route
+                path="/disbursements/details/:loanId"
+                element={<DisbursementDetails />}
               />
 
               <Route path="/wallet" element={<Wallet />} />

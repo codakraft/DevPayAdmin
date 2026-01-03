@@ -125,7 +125,7 @@ const LoginPage: React.FC = () => {
           </div>
 
           <div className="footer">
-            <p>deVpay © 2025. All right reserved</p>
+            <p>deVpay © 2026. All right reserved</p>
           </div>
         </div>
       </div>

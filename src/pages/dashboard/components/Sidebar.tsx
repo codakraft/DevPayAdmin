@@ -58,6 +58,14 @@ const dropdownMenus: Record<string, SubMenuItem[]> = {
       path: "/loan/ongoing-collections",
     },
   ],
+  disbursements: [
+    { id: "disburse", label: "Disburse", path: "/disbursements/disburse" },
+    {
+      id: "all-disbursements",
+      label: "All Disbursements",
+      path: "/disbursements/all",
+    },
+  ],
 };
 
 const Sidebar: React.FC = () => {
@@ -316,6 +324,57 @@ const Sidebar: React.FC = () => {
             {openDropdowns.communication && (
               <ul className="dropdown-menu">
                 {dropdownMenus.communication.map((item) => (
+                  <li
+                    key={item.id}
+                    className={`dropdown-item ${
+                      isPathActive(item.path) ? "active" : ""
+                    }`}
+                  >
+                    <Link to={item.path}>
+                      <span>{item.label}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+
+          {/* Disbursements Menu */}
+          <li
+            className={`nav-item ${
+              openDropdowns.disbursements ? "expanded" : ""
+            } ${isPathActive("/disbursements") ? "active" : ""}`}
+          >
+            <div
+              className="nav-item-main"
+              onClick={() => toggleDropdown("disbursements")}
+            >
+              <div className="icon-container">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </div>
+              <span>Disbursements</span>
+              <span
+                className={`chevron ${
+                  openDropdowns.disbursements ? "open" : ""
+                }`}
+              >
+                ›
+              </span>
+            </div>
+            {openDropdowns.disbursements && (
+              <ul className="dropdown-menu">
+                {dropdownMenus.disbursements.map((item) => (
                   <li
                     key={item.id}
                     className={`dropdown-item ${
