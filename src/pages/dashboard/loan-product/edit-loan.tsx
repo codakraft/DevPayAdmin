@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { ReactComponent as CheckIcon } from "../../../assets/Ellipse1593.svg";
-import { useNavigate } from "react-router-dom";
-
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import Button from "../../../ui/components/button/button";
@@ -10,7 +9,7 @@ import PreviewComponent from "../adsManagement/PreviewComponent";
 import AdvertDetails from "../adsManagement/AdvertDetails";
 import SuccessModal from "../../../ui/components/modal/SuccessModal";
 import styles from "./styles.module.css";
-import { useCreateLoanProductMutation } from "../../../store/apiSlice";
+import { useUpdateLoanProductMutation } from "../../../store/apiSlice";
 
 const steps = [
   {
@@ -23,11 +22,6 @@ const steps = [
     heading: "Interest Rates",
     text: "kindly set your interest rates",
   },
-  //   {
-  //     id: 3,
-  //     heading: "Duration",
-  //     text: "Select duration of your loan",
-  //   },
   {
     id: 3,
     heading: "Preview",
@@ -44,9 +38,9 @@ interface InterestFee {
 interface LoanProductData {
   ageRange: string[];
   allowMultipleLoans: boolean;
-  banner: any; // Use a more specific type if available
+  banner: any;
   budget: string;
-  carousel: any[]; // Use a more specific type if available
+  carousel: any[];
   code: string;
   cta: string;
   days: string;
@@ -71,53 +65,124 @@ interface LoanProductData {
   penaltyPercent: string;
   title: string;
   turnoverEligibility: string;
-  upload: any; // Use a more specific type if available
-  video: any; // Use a more specific type if available
+  upload: any;
+  video: any;
 }
 
-export default function LoanProductManagement() {
+export default function EditLoanProduct() {
   const [activeStep, setActiveStep] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const navigate = useNavigate();
-  type CreateDataType = {
-    name?: string;
-    shortName?: string;
-    description?: string;
-    interestRate?: number | string;
-    minAmount?: number | string;
-    maxAmount?: number | string;
-    minTenor?: number | string;
-    maxTenor?: number | string;
-    moratorium?: number | string;
-    code: string;
-    // Add other fields as needed
-  };
+  const location = useLocation();
+  const { id } = useParams();
+
+  // Get product data from location state or fetch from API
+  const productFromState = location.state?.product;
 
   const [createData, setCreateData] = useState<LoanProductData>();
+  const [updateLoanProduct, { isLoading }] = useUpdateLoanProductMutation();
 
-  const [createLoanProduct, { isLoading }] = useCreateLoanProductMutation();
+  // Initial values from the product being edited
+  const initialValues = productFromState
+    ? {
+        mediaType: "",
+        title: "",
+        link: "",
+        cta: "",
+        upload: null,
+        carousel: [],
+        banner: null,
+        video: null,
+        gender: "",
+        interest: [productFromState.interestRate?.toString() || ""],
+        ageRange: [],
+        days: "",
+        budget: "",
+        name: productFromState.name || "",
+        code: productFromState.shortName || "",
+        minLoanAmount: productFromState.minAmount?.toString() || "",
+        maxLoanAmount: productFromState.maxAmount?.toString() || "",
+        minTenor: productFromState.minTenor?.toString() || "",
+        maxTenor: productFromState.maxTenor?.toString() || "",
+        minAge: "",
+        maxAge: "",
+        moratorium: productFromState.moratorium?.toString() || "",
+        notifyApprovers: productFromState.notifyApprovalsViaEmail || false,
+        interestRate: productFromState.interestRate?.toString() || "",
+        penaltyPercent:
+          productFromState.penaltyOnDefaultPrincipal?.toString() || "",
+        turnoverEligibility:
+          productFromState.turnoverEligibilityPercent?.toString() || "",
+        interestComputationFrequency:
+          productFromState.interestCostComputation?.toString() || "",
+        interestComputationBasis:
+          productFromState.interestComputationBasis === 0 ? "flat" : "reducing",
+        paymentScheduleBreakdown:
+          productFromState.paymentScheduleBreakdown?.toString() || "",
+        allowMultipleLoans: false,
+        interestFeesTable: [],
+      }
+    : {
+        mediaType: "",
+        title: "",
+        link: "",
+        cta: "",
+        upload: null,
+        carousel: [],
+        banner: null,
+        video: null,
+        gender: "",
+        interest: [],
+        ageRange: [],
+        days: "",
+        budget: "",
+        name: "",
+        code: "",
+        minLoanAmount: "",
+        maxLoanAmount: "",
+        minTenor: "",
+        maxTenor: "",
+        minAge: "",
+        maxAge: "",
+        moratorium: "",
+        notifyApprovers: false,
+        interestRate: "",
+        penaltyPercent: "",
+        turnoverEligibility: "",
+        interestComputationFrequency: "",
+        interestComputationBasis: "",
+        paymentScheduleBreakdown: "",
+        allowMultipleLoans: false,
+        interestFeesTable: [],
+      };
 
   const handleNext = () =>
     setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
   const handleBack = () => setActiveStep((prev) => Math.max(prev - 1, 0));
 
   const handleOnFormSubmit = async () => {
-    console.log("here", createData);
+    console.log("Updating product", createData);
     const requestBody = {
-      // companyId: "6f2e993b-26c9-4175-9021-cdf1106d8466",
+      id: productFromState?.id || id,
       name: createData?.name ?? "",
       shortName: createData?.code ?? "",
       description: "string",
-      interestRate: Number(createData?.interestRate) ?? 0,
+      interestRate: parseFloat(
+        Number(createData?.interestRate || 0).toFixed(1),
+      ),
       minAmount: Number(createData?.minLoanAmount) ?? "",
       maxAmount: Number(createData?.maxLoanAmount) ?? "",
       minTenor: Number(createData?.minTenor) ?? "",
       maxTenor: Number(createData?.maxTenor) ?? "",
       moratorium: Number(createData?.moratorium) ?? "",
       code: createData?.code ?? "",
-      penaltyOnDefaultPrincipal: Number(createData?.penaltyPercent) ?? 0,
+      penaltyOnDefaultPrincipal: parseFloat(
+        Number(createData?.penaltyPercent || 0).toFixed(1),
+      ),
       notifyApprovalsViaEmail: createData?.notifyApprovers ?? false,
-      turnoverEligibilityPercent: Number(createData?.turnoverEligibility) ?? 0,
+      turnoverEligibilityPercent: parseFloat(
+        Number(createData?.turnoverEligibility || 0).toFixed(1),
+      ),
       interestComputationBasis:
         createData?.interestComputationBasis === "flat" ? 0 : 1,
       interestCostComputation:
@@ -125,20 +190,23 @@ export default function LoanProductManagement() {
       paymentScheduleBreakdown: 0,
       paymentScheduleType: 0,
     };
-    console.log("requestBody", requestBody);
+
+    console.log("Update request body", requestBody);
+
     try {
-      const response = await createLoanProduct(requestBody).unwrap();
-      console.log("res", response);
+      const response = await updateLoanProduct(requestBody).unwrap();
+      console.log("Update response", response);
       if (response.success) {
         setShowSuccessModal(true);
       }
     } catch (error) {
-      console.error("Error creating loan product:", error);
+      console.error("Error updating loan product:", error);
     }
   };
+
   return (
     <>
-      <h1 className={styles.adHeading}>Create a new loan product</h1>
+      <h1 className={styles.adHeading}>Edit Loan Product</h1>
       <div className={styles.container}>
         <aside className={styles.stepPanel}>
           <ul className={styles.stepList}>
@@ -170,76 +238,12 @@ export default function LoanProductManagement() {
         </aside>
 
         <Formik
-          initialValues={{
-            mediaType: "",
-            title: "",
-            link: "",
-            cta: "",
-            upload: null,
-            carousel: [],
-            banner: null,
-            video: null,
-            gender: "",
-            interest: [],
-            ageRange: [],
-            days: "",
-            budget: "",
-            // Loan product fields
-            name: "",
-            code: "",
-            minLoanAmount: "",
-            maxLoanAmount: "",
-            minTenor: "",
-            maxTenor: "",
-            minAge: "",
-            maxAge: "",
-            moratorium: "",
-            notifyApprovers: false,
-            interestRate: "",
-            penaltyPercent: "",
-            turnoverEligibility: "",
-            interestComputationFrequency: "",
-            interestComputationBasis: "",
-            paymentScheduleBreakdown: "",
-            allowMultipleLoans: false,
-            interestFeesTable: [],
-          }}
+          initialValues={initialValues}
           validationSchema={Yup.object({})}
           onSubmit={(values) => {
             console.log("Final Submission", values);
             setCreateData(values as any);
-            // Save to localStorage for loan products
-            // const existingProducts = JSON.parse(
-            //   localStorage.getItem("createdLoanProducts") || "[]"
-            // );
-            // const newProduct = {
-            //   id: String(Date.now()).slice(-4), // Generate a simple ID from timestamp
-            //   organization: values.name || "Unnamed Product",
-            //   interestRate: values.interestRate
-            //     ? `${values.interestRate}%`
-            //     : "0%",
-            //   loanRange: `${values.minLoanAmount || 0} - ${
-            //     values.maxLoanAmount || 0
-            //   }`,
-            //   loanTenor: values.maxTenor
-            //     ? `${values.maxTenor} months`
-            //     : "0 months",
-            //   status: "Active",
-            //   createdAt: new Date().toISOString(),
-            //   formData: values, // Store all form values for future reference
-            // };
-
-            // const updatedProducts = [...existingProducts, newProduct];
-            // console.log("createRequest", updatedProducts);
-            // localStorage.setItem(
-            //   "createdLoanProducts",
-            //   JSON.stringify(updatedProducts)
-            // );
-
-            // Dispatch custom event to notify other components
-            window.dispatchEvent(new CustomEvent("loanProductCreated"));
-
-            // setShowSuccessModal(true);
+            window.dispatchEvent(new CustomEvent("loanProductUpdated"));
           }}
         >
           {({ values, setFieldValue }) => (
@@ -253,12 +257,6 @@ export default function LoanProductManagement() {
                   setFieldValue={setFieldValue}
                 />
               )}
-              {/* {activeStep === 2 && (
-                <DurationComponent
-                  values={values}
-                  setFieldValue={setFieldValue}
-                />
-              )} */}
               {activeStep === 2 && <PreviewComponent values={values} />}
 
               <div className={styles.buttonGroup}>
@@ -282,23 +280,23 @@ export default function LoanProductManagement() {
                     type="submit"
                     disabled={isLoading}
                   >
-                    {isLoading ? "...loading" : "Submit"}
+                    {isLoading ? "Updating..." : "Update Product"}
                   </Button>
                 )}
               </div>
             </Form>
           )}
         </Formik>
-      </div>{" "}
+      </div>
       <SuccessModal
         isOpen={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false);
-          setActiveStep(0); // Reset to first step after closing modal
-          navigate("/content-management"); // Navigate back to loan product page
+          setActiveStep(0);
+          navigate("/content-management");
         }}
-        title="Loan Product Created Successfully!"
-        message="Your loan product has been created successfully and is now available for use."
+        title="Loan Product Updated Successfully!"
+        message="Your loan product has been updated successfully."
       />
     </>
   );

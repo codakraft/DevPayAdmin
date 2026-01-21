@@ -51,6 +51,13 @@ export const apiSlice = createApi({
         body,
       }),
     }),
+    updateLoanProduct: builder.mutation<any, CreateLoanData & { id: string }>({
+      query: ({ id, ...body }) => ({
+        url: `company/loan-product/${id}`,
+        method: "PUT",
+        body,
+      }),
+    }),
     getLoans: builder.query<any, {status: number}>({
       query: ({status}) => ({
         url: `company/loans?Status=${status}`,
@@ -145,6 +152,7 @@ export const {
   useGetDashboardQuery,
   useLazyGetLoanProductQuery,
   useCreateLoanProductMutation,
+  useUpdateLoanProductMutation,
   useLazyGetLoansQuery,
   useLazyGetCompanyDashboardQuery,
   useGetAdminUserQuery,

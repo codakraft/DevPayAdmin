@@ -25,6 +25,7 @@ import CreateAdd from "./pages/dashboard/adsManagement";
 import AllLoan from "./pages/dashboard/loan";
 import LoanProduct from "./pages/dashboard/loan-product/loanProduct";
 import LoanProductManagement from "./pages/dashboard/loan-product/create-loan";
+import EditLoanProduct from "./pages/dashboard/loan-product/edit-loan";
 import AuditTrail from "./pages/dashboard/audit-trail";
 import AdminUserProfile from "./pages/dashboard/adminManagement/admin-userprofile";
 import LoanRequestPage from "./pages/dashboard/loanRequest";
@@ -102,6 +103,10 @@ function App() {
               <Route
                 path="/loan-product/creat-loan"
                 element={<LoanProductManagement />}
+              />
+              <Route
+                path="/content-management/edit/:id"
+                element={<EditLoanProduct />}
               />
 
               <Route path="/audit-trail/index" element={<AuditTrail />} />

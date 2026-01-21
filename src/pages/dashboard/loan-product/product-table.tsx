@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import styles from "./productTable.module.css";
-import { useLazyGetLoanProductQuery } from "../../../store/apiSlice";
 
 const dummyData = [
   {
@@ -54,6 +54,7 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
   const [selected, setSelected] = useState<string[]>([]);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [tableData, setTableData] = useState(dummyData);
+  const navigate = useNavigate();
 
   console.log("dataloan", data);
 
@@ -61,7 +62,7 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
   useEffect(() => {
     const loadCreatedProducts = () => {
       const createdProducts = JSON.parse(
-        localStorage.getItem("createdLoanProducts") || "[]"
+        localStorage.getItem("createdLoanProducts") || "[]",
       );
       // Combine dummy data with created products
       const combinedData = [...dummyData, ...createdProducts];
@@ -94,7 +95,7 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
 
   const toggleOne = (id: string) => {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
 
@@ -214,6 +215,26 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
                       }}
                     >
                       View
+                    </button>
+                    <button
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        padding: "10px 16px",
+                        background: "none",
+                        border: "none",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        fontSize: 14,
+                      }}
+                      onClick={() => {
+                        setMenuOpenId(null);
+                        navigate(`/content-management/edit/${row.id}`, {
+                          state: { product: row },
+                        });
+                      }}
+                    >
+                      Edit
                     </button>
                     <button
                       style={{

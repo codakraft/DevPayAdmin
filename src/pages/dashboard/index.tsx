@@ -9,6 +9,17 @@ import {
 } from "../../store/apiSlice";
 import { DashboardDataAnalytics } from "../../types/types";
 
+const formatCurrency = (value: number | string | undefined): string => {
+  if (!value) return "₦0.00";
+  const numValue = typeof value === "string" ? parseFloat(value) : value;
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numValue);
+};
+
 const Dashboard: React.FC = () => {
   const [activeTimeFilter, setActiveTimeFilter] = useState<
     "month" | "year" | "custom"
@@ -171,20 +182,19 @@ const Dashboard: React.FC = () => {
           title="Total Loan Requests"
           value={
             activeTimeFilter === "month"
-              ? `₦${dashboardData?.financialMetrics?.averageRequestAmount.toString()}` ||
-                "₦0.00"
-              : `₦${dashboardData?.financialMetrics?.totalRequested.toString()}` ||
-                "₦0.00"
+              ? formatCurrency(
+                  dashboardData?.financialMetrics?.averageRequestAmount,
+                )
+              : formatCurrency(dashboardData?.financialMetrics?.totalRequested)
           }
           change={currentStats.loanRequestsChange}
           period={activeTimeFilter === "month" ? "This month" : "This year"}
         />
         <StatCard
           title="Loan Requests"
-          value={
-            `₦${dashboardData?.financialMetrics?.totalRequested.toString()}` ||
-            "₦0.00"
-          }
+          value={formatCurrency(
+            dashboardData?.financialMetrics?.totalRequested,
+          )}
           change=""
           period="All time"
         />
@@ -195,20 +205,19 @@ const Dashboard: React.FC = () => {
           title="Total Disbursed Loans"
           value={
             activeTimeFilter === "month"
-              ? `₦${dashboardData?.financialMetrics?.averageDisbursementAmount.toString()}` ||
-                "₦0.00"
-              : `₦${dashboardData?.financialMetrics?.totalDisbursed.toString()}` ||
-                "₦0.00"
+              ? formatCurrency(
+                  dashboardData?.financialMetrics?.averageDisbursementAmount,
+                )
+              : formatCurrency(dashboardData?.financialMetrics?.totalDisbursed)
           }
           change={currentStats.disbursedLoansChange}
           period={activeTimeFilter === "month" ? "This month" : "This year"}
         />
         <StatCard
           title="Total Disbursed Loans"
-          value={
-            `₦${dashboardData?.financialMetrics?.totalDisbursed.toString()}` ||
-            "₦0.00"
-          }
+          value={formatCurrency(
+            dashboardData?.financialMetrics?.totalDisbursed,
+          )}
           change=""
           period="All time"
         />
