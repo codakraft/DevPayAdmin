@@ -8,15 +8,16 @@ import { useLazyGetLoanProductQuery } from "../../../store/apiSlice";
 import { useEffect, useState } from "react";
 
 export default function LoanProduct() {
-  const [data, setData] = useState();
+  const [data, setData] = useState<{ loanProducts: any[] } | undefined>();
 
   const [getLoanProduct, { isLoading }] = useLazyGetLoanProductQuery();
 
   useEffect(() => {
     const fetchLoans = async () => {
-      const response = await getLoanProduct({
-        id: "6f2e993b-26c9-4175-9021-cdf1106d8466",
-      }).unwrap();
+      const response = await getLoanProduct().unwrap();
+      //   {
+      //   id: "6f2e993b-26c9-4175-9021-cdf1106d8466",
+      // }
       if (response?.data) {
         setData(response.data);
       }
@@ -74,7 +75,7 @@ export default function LoanProduct() {
           </style>
         </div>
       ) : data ? (
-        <LoanTable data={data} />
+        <LoanTable data={data?.loanProducts} />
       ) : null}
       {/* <LoanTable /> */}
     </>

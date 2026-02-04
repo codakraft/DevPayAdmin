@@ -32,15 +32,16 @@ export const apiSlice = createApi({
         method: "GET",
       }),
     }),
-    getCompanyDashboard: builder.query<CompanyDashboardResponse, { id: string }>({
-      query: ({ id }) => ({
-        url: `support/companies/${id}/dashboard`,
+    getCompanyDashboard: builder.query<CompanyDashboardResponse, void>({
+      query: () => ({
+        // url: `support/companies/${id}/dashboard`,
+        url: `company/dashboard`,
         method: "GET",
       }),
     }),
-    getLoanProduct: builder.query<any, { id: string }>({
-      query: ({ id }) => ({
-        url: `company/loan-products/${id}`,
+    getLoanProduct: builder.query<any, void>({
+      query: () => ({
+        url: `company/loan-products`,
         method: "GET",
       }),
     }),

@@ -139,7 +139,10 @@ function App() {
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          {/* Catch-all route for unrecognized paths */}
+          <Route path="*" element={<ProtectedRoute />}>
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
         </Routes>
       </Router>
     </AuthProvider>

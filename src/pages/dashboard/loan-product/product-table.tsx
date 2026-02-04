@@ -87,10 +87,10 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
     };
   }, []);
 
-  const isAllSelected = selected.length === tableData.length;
+  const isAllSelected = selected.length === tableData?.length;
 
   const toggleAll = () => {
-    setSelected(isAllSelected ? [] : tableData.map((row) => row.id));
+    setSelected(isAllSelected ? [] : tableData?.map((row) => row.id));
   };
 
   const toggleOne = (id: string) => {
@@ -133,7 +133,7 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
         </tr>
       </thead>
       <tbody>
-        {data.map((row) => (
+        {data?.map((row) => (
           <tr key={row.id}>
             <td>
               <input

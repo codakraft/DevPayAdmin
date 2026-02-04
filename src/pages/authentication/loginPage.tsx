@@ -18,7 +18,7 @@ const LoginPage: React.FC = () => {
   const location = useLocation();
 
   // Determine where to redirect after login
-  const from = location.state?.from?.pathname ?? "/dashboard";
+  const from = location.state?.from || "/dashboard";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,8 +27,8 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(email, password);
-      // AuthContext will set isAuthenticated, so navigation will work
-      navigate("/dashboard", { replace: true });
+      // AuthContext will set isAuthenticated, redirect to intended location or dashboard
+      navigate(from, { replace: true });
     } catch (error: any) {
       console.error("Login failed:", error);
       setError("Login failed. Please check your credentials and try again.");

@@ -41,7 +41,7 @@ const Dashboard: React.FC = () => {
         params.startDate = customStartDate;
         params.endDate = customEndDate;
       }
-      const response = await getCompanyDashboard(params).unwrap();
+      const response = await getCompanyDashboard().unwrap();
       setDashboardData(response.data);
       console.log("Dashboard data:", response.data);
     } catch (error) {
