@@ -25,39 +25,33 @@ export default function AuditTable() {
         let total = 0;
         
         if (Array.isArray(response)) {
-          // Response is directly an array
-          console.log("Response is array, length:", response.length);
           items = response;
           total = response.length;
         } else if (response?.data) {
           if (Array.isArray(response.data)) {
             // response.data is an array
-            console.log("response.data is array, length:", response.data.length);
+            
             items = response.data;
             total = response.data.length;
           } else if (response.data.items) {
             // response.data.items is the array
-            console.log("response.data.items exists, length:", response.data.items?.length);
+            
             items = response.data.items;
             total = response.data.totalCount || response.data.totalRecords || items.length;
           } else {
-            console.log("Unknown data structure in response.data");
+            
           }
         } else if (response?.items) {
-          // response.items is the array
-          console.log("response.items exists, length:", response.items.length);
+          
           items = response.items;
           total = response.totalCount || response.totalRecords || items.length;
         }
         
-        console.log("Final items to set:", items);
-        console.log("Final total to set:", total);
-        console.log("First item:", items[0]);
         
         setAuditData(items);
         setTotalRecords(total);
       } catch (error) {
-        console.error("Failed to fetch audit trail:", error);
+        
       }
     };
 

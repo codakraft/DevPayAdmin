@@ -1,24 +1,47 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query/react";
 import { AdminUserResponse, CompanyDashboardResponse, CreateLoanData, WalletResponse, FundWalletRequestData, FundWalletResponse, CompleteFundWalletRequestData, CompleteFundWalletResponse, WalletTransactionsResponse, WalletTransactionsRequest } from "../types/types";
+
+const baseQuery = fetchBaseQuery({
+  baseUrl:
+    "https://staginlending-fvexbmfhawe7e6ad.southafricanorth-01.azurewebsites.net/api/v1/",
+  prepareHeaders: (headers, { endpoint }) => {
+    const token = localStorage.getItem("devpay_admin_token");
+    console.log("[apiSlice] Endpoint:", endpoint);
+    console.log("[apiSlice] devpay_admin_token:", token);
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+      console.log("[apiSlice] Authorization header set:", headers.get("Authorization"));
+    } else {
+      console.warn("[apiSlice] No token found in localStorage, Authorization header not set.");
+    }
+    return headers;
+  },
+});
+
+const baseQueryWithAuth: BaseQueryFn<
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError
+> = async (args, api, extraOptions) => {
+  const result = await baseQuery(args, api, extraOptions);
+  
+  // Check if response status is 401
+  if (result.error && result.error.status === 401) {
+    console.warn("[apiSlice] 401 Unauthorized - Redirecting to login");
+    // Clear auth data
+    localStorage.removeItem("devpay_admin_token");
+    localStorage.removeItem("devpay_admin_user");
+    // Redirect to login
+    window.location.href = "/login";
+  }
+  
+  return result;
+};
 
 export const apiSlice = createApi({
   reducerPath: "api",
-  baseQuery: fetchBaseQuery({
-    baseUrl:
-      "https://staginlending-fvexbmfhawe7e6ad.southafricanorth-01.azurewebsites.net/api/v1/",
-    prepareHeaders: (headers, { endpoint }) => {
-      const token = localStorage.getItem("devpay_admin_token");
-      console.log("[apiSlice] Endpoint:", endpoint);
-      console.log("[apiSlice] devpay_admin_token:", token);
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
-        console.log("[apiSlice] Authorization header set:", headers.get("Authorization"));
-      } else {
-        console.warn("[apiSlice] No token found in localStorage, Authorization header not set.");
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithAuth,
   endpoints: (builder) => ({
     login: builder.mutation<any, { email: string; password: string }>({
       query: (body) => ({

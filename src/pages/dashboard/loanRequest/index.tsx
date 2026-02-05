@@ -20,7 +20,7 @@ export default function LoanRequestPage() {
   const fetchLoans = async () => {
     try {
       const response = await getLoans({ status: 0 }).unwrap();
-      console.log("Fetched loans:", response);
+     
       if (response?.data) {
         setData(response.data.loans);
       }

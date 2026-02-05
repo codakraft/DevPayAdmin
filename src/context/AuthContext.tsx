@@ -43,12 +43,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const refreshAuth = useCallback(() => {
-    console.log("[AuthContext] Refreshing authentication state");
     const token = localStorage.getItem("devpay_admin_token");
     const userData = localStorage.getItem("devpay_admin_user");
-
-    console.log("[AuthContext] Refresh - Token exists:", !!token);
-    console.log("[AuthContext] Refresh - User data exists:", !!userData);
 
     if (token && userData) {
       try {
@@ -92,7 +88,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token && userData) {
         try {
           const parsedUser = JSON.parse(userData);
-          console.log("[AuthContext] Parsed user data:", parsedUser);
 
           // Validate that the parsed user has required fields
           if (parsedUser && parsedUser.id && parsedUser.email) {
