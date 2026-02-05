@@ -1,117 +1,102 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "../components/AdsTable.module.css";
-
-const dummyData = [
-  {
-    id: 1,
-    date: "12-Jul-2025 10:05 AM",
-    user: "admin@devpay.com",
-    action: "Logged in",
-    status: "Successful",
-  },
-  {
-    id: 2,
-    date: "12-Jul-2025 10:02 AM",
-    user: "support@devpay.com",
-    action: "Approved Loan Request #LP-12346 for John Alimi",
-    status: "Completed",
-  },
-  {
-    id: 3,
-    date: "11-Jul-2025 04:30 PM",
-    user: "admin@devpay.com",
-    action: "Updated loan product 'Payday Loan' interest rate to 5%",
-    status: "Modified",
-  },
-  {
-    id: 4,
-    date: "11-Jul-2025 02:15 PM",
-    user: "admin@devpay.com",
-    action: "Viewed user profile for Fayemi Kayode",
-    status: "Viewed",
-  },
-  {
-    id: 5,
-    date: "11-Jul-2025 11:00 AM",
-    user: "support@devpay.com",
-    action: "Rejected Loan Request #LP-12345 for Elijah Akinpelu",
-    status: "Completed",
-  },
-  {
-    id: 6,
-    date: "10-Jul-2025 09:00 AM",
-    user: "admin@devpay.com",
-    action: "Exported all loans data to CSV",
-    status: "Completed",
-  },
-  {
-    id: 7,
-    date: "09-Jul-2025 05:00 PM",
-    user: "admin@devpay.com",
-    action: "Added new admin user 'new.admin@devpay.com'",
-    status: "Completed",
-  },
-  {
-    id: 8,
-    date: "09-Jul-2025 03:12 PM",
-    user: "support@devpay.com",
-    action: "Searched for user with BVN '22245678901'",
-    status: "Completed",
-  },
-  {
-    id: 9,
-    date: "08-Jul-2025 12:00 PM",
-    user: "admin@devpay.com",
-    action: "Logged out",
-    status: "Successful",
-  },
-  {
-    id: 10,
-    date: "08-Jul-2025 09:05 AM",
-    user: "admin@devpay.com",
-    action: "Viewed dashboard analytics for 'This Month'",
-    status: "Viewed",
-  },
-];
+import { useLazyGetAuditTrailQuery } from "../../../store/apiSlice";
 
 export default function AuditTable() {
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [auditData, setAuditData] = useState<any[]>([]);
+  const [totalRecords, setTotalRecords] = useState(0);
+  
+  const [getAuditTrail, { isLoading, isFetching }] = useLazyGetAuditTrailQuery();
+
+  useEffect(() => {
+    const fetchAuditTrail = async () => {
+      try {
+        const response = await getAuditTrail({ 
+          page: currentPage, 
+          pageSize: pageSize 
+        }).unwrap();
+        
+        // Try different response structures
+        let items = [];
+        let total = 0;
+        
+        if (Array.isArray(response)) {
+          // Response is directly an array
+          console.log("Response is array, length:", response.length);
+          items = response;
+          total = response.length;
+        } else if (response?.data) {
+          if (Array.isArray(response.data)) {
+            // response.data is an array
+            console.log("response.data is array, length:", response.data.length);
+            items = response.data;
+            total = response.data.length;
+          } else if (response.data.items) {
+            // response.data.items is the array
+            console.log("response.data.items exists, length:", response.data.items?.length);
+            items = response.data.items;
+            total = response.data.totalCount || response.data.totalRecords || items.length;
+          } else {
+            console.log("Unknown data structure in response.data");
+          }
+        } else if (response?.items) {
+          // response.items is the array
+          console.log("response.items exists, length:", response.items.length);
+          items = response.items;
+          total = response.totalCount || response.totalRecords || items.length;
+        }
+        
+        console.log("Final items to set:", items);
+        console.log("Final total to set:", total);
+        console.log("First item:", items[0]);
+        
+        setAuditData(items);
+        setTotalRecords(total);
+      } catch (error) {
+        console.error("Failed to fetch audit trail:", error);
+      }
+    };
+
+    fetchAuditTrail();
+  }, [currentPage, pageSize, getAuditTrail]);
 
   // Filtered data based on search and action filter
-  const filteredData = dummyData.filter((row) => {
+  const filteredData = auditData.filter((row) => {
     const searchMatch =
       searchQuery === "" ||
-      row.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      row.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      row.status.toLowerCase().includes(searchQuery.toLowerCase());
+      (row.userEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.action?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.details?.toLowerCase().includes(searchQuery.toLowerCase()));
 
     let actionMatch = true;
-    if (actionFilter === "approvals") {
-      actionMatch = row.action.toLowerCase().includes("approved loan request");
-    } else if (actionFilter === "rejections") {
-      actionMatch = row.action.toLowerCase().includes("rejected loan request");
-    } else if (actionFilter === "logins") {
-      actionMatch = row.action.toLowerCase().includes("logged in");
-    } else if (actionFilter === "logouts") {
-      actionMatch = row.action.toLowerCase().includes("logged out");
-    } // add more filters as needed
+    if (actionFilter !== "all") {
+      actionMatch = row.action?.toLowerCase().includes(actionFilter.toLowerCase()) ||
+                    row.category?.toLowerCase().includes(actionFilter.toLowerCase());
+    }
+    
     return searchMatch && actionMatch;
   });
 
   const exportToCSV = () => {
     // Define CSV headers
-    const headers = ["Date", "User", "Action", "Status"];
+    const headers = ["Date", "User", "Action", "Category", "Details", "Status"];
 
     // Convert data to CSV format
     const csvData = [
       headers.join(","), // Header row
-      ...dummyData.map((row) =>
+      ...filteredData.map((row: any) =>
         [
-          `"${row.date}"`,
-          `"${row.user}"`,
-          `"${row.action}"`,
-          `"${row.status}"`,
+          `"${new Date(row.timestamp).toLocaleString()}"`,
+          `"${row.userEmail || 'N/A'}"`,
+          `"${row.action || 'N/A'}"`,
+          `"${row.category || 'N/A'}"`,
+          `"${row.details || 'N/A'}"`,
+          `"${row.isSuccess ? 'Success' : 'Failed'}"`,
         ].join(",")
       ),
     ].join("\n");
@@ -146,17 +131,35 @@ export default function AuditTable() {
 
         <div className={styles.filtersContainer}>
           <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className={styles.filterSelect}
+            style={{ marginRight: 12 }}
+          >
+            <option value={10}>10 per page</option>
+            <option value={25}>25 per page</option>
+            <option value={50}>50 per page</option>
+            <option value={100}>100 per page</option>
+          </select>
+          
+          <select
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
             className={styles.filterSelect}
             style={{ marginRight: 12 }}
           >
             <option value="all">All Actions</option>
-            <option value="approvals">Loan Approvals</option>
-            <option value="rejections">Loan Rejections</option>
-            <option value="logins">Logins</option>
-            <option value="logouts">Logouts</option>
+            <option value="login">Logins</option>
+            <option value="logout">Logouts</option>
+            <option value="security">Security</option>
+            <option value="loan">Loan Actions</option>
+            <option value="user">User Actions</option>
+            <option value="admin">Admin Actions</option>
           </select>
+          
           <button
             onClick={exportToCSV}
             className={styles.exportBtn}
@@ -167,47 +170,159 @@ export default function AuditTable() {
         </div>
       </div>
 
-      <table className={styles.customTable}>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>User</th>
-            <th>Action</th>
-            <th>Status</th>
-            {/* <th></th> */}
-          </tr>
-        </thead>
-        <tbody>
-          {filteredData.map((row) => (
-            <tr key={row.id}>
-              <td>
-                <div className={styles.adDetails}>
-                  <div>
-                    <p>{row.date}</p>
-                  </div>
-                </div>
-              </td>
-              <td>{row.user}</td>
-              <td>{row.action}</td>
-              <td>
-                <span
-                  className={`${styles.badge} ${styles[`status${row.status}`]}`}
-                >
-                  {row.status}
-                </span>
-              </td>
-              <td>
-                <button
-                  className={styles.ellipsisBtn}
-                  aria-label="More options"
-                >
-                  {/* ... */}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {isLoading || isFetching ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <div className="spinner" style={{
+            width: 40,
+            height: 40,
+            border: '4px solid #eee',
+            borderTop: '4px solid #3A7145',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto'
+          }} />
+          <style>
+            {`@keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }`}
+          </style>
+        </div>
+      ) : (
+        <>
+          <table className={styles.customTable}>
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Category</th>
+                <th>Details</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.length > 0 ? (
+                filteredData.map((row: any, index: number) => (
+                  <tr key={row.id || index}>
+                    <td>
+                      <div className={styles.adDetails}>
+                        <div>
+                          <p>{new Date(row.timestamp).toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          })}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{row.userEmail || 'N/A'}</td>
+                    <td>
+                      <span style={{ 
+                        fontWeight: '500',
+                        color: '#374151'
+                      }}>
+                        {row.action?.replace(/([A-Z])/g, ' $1').trim() || 'N/A'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`${styles.badge}`} style={{
+                        background: row.category === 'Security' ? '#dbeafe' : '#e0e7ff',
+                        color: row.category === 'Security' ? '#1e40af' : '#4338ca',
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}>
+                        {row.category || 'General'}
+                      </span>
+                    </td>
+                    <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {row.details || 'N/A'}
+                    </td>
+                    <td>
+                      <span className={`${styles.badge}`} style={{
+                        background: row.isSuccess ? '#d1fae5' : '#fee2e2',
+                        color: row.isSuccess ? '#065f46' : '#991b1b',
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}>
+                        {row.isSuccess ? '✓ Success' : '✗ Failed'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px' }}>
+                    No audit records found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {/* Pagination Controls */}
+          <div className={styles.paginationContainer} style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '20px',
+            borderTop: '1px solid #e5e7eb'
+          }}>
+            <div>
+              Showing {filteredData.length > 0 ? ((currentPage - 1) * pageSize) + 1 : 0} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} records
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={styles.paginationBtn}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  background: currentPage === 1 ? '#f3f4f6' : 'white',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === 1 ? 0.5 : 1
+                }}
+              >
+                Previous
+              </button>
+              <span style={{
+                padding: '8px 16px',
+                border: '1px solid #3A7145',
+                borderRadius: '6px',
+                background: '#3A7145',
+                color: 'white',
+                fontWeight: '600'
+              }}>
+                Page {currentPage}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                disabled={currentPage * pageSize >= totalRecords}
+                className={styles.paginationBtn}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  background: currentPage * pageSize >= totalRecords ? '#f3f4f6' : 'white',
+                  cursor: currentPage * pageSize >= totalRecords ? 'not-allowed' : 'pointer',
+                  opacity: currentPage * pageSize >= totalRecords ? 0.5 : 1
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

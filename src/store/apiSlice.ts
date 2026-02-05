@@ -6,14 +6,15 @@ export const apiSlice = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl:
       "https://staginlending-fvexbmfhawe7e6ad.southafricanorth-01.azurewebsites.net/api/v1/",
-    prepareHeaders: (headers) => {
+    prepareHeaders: (headers, { endpoint }) => {
       const token = localStorage.getItem("devpay_admin_token");
+      console.log("[apiSlice] Endpoint:", endpoint);
       console.log("[apiSlice] devpay_admin_token:", token);
       if (token) {
         headers.set("Authorization", `Bearer ${token}`);
         console.log("[apiSlice] Authorization header set:", headers.get("Authorization"));
       } else {
-        console.log("[apiSlice] No token found, Authorization header not set.");
+        console.warn("[apiSlice] No token found in localStorage, Authorization header not set.");
       }
       return headers;
     },
@@ -145,6 +146,12 @@ export const apiSlice = createApi({
         method: "POST",
       }),
     }),
+    getAuditTrail: builder.query<any, { page?: number; pageSize?: number }>({
+      query: ({ page = 1, pageSize = 50 }) => ({
+        url: `https://staginlending-fvexbmfhawe7e6ad.southafricanorth-01.azurewebsites.net/api/Audit?page=${page}&pageSize=${pageSize}`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -167,5 +174,6 @@ export const {
   useLogoutMutation,
   useLazyGetLoansByIDQuery,
   useDisburseLoanMutation,
-  useLazyGetDisbursementsQuery
+  useLazyGetDisbursementsQuery,
+  useLazyGetAuditTrailQuery
 } = apiSlice;

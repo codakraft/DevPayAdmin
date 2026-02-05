@@ -47,6 +47,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const token = localStorage.getItem("devpay_admin_token");
     const userData = localStorage.getItem("devpay_admin_user");
 
+    console.log("[AuthContext] Refresh - Token exists:", !!token);
+    console.log("[AuthContext] Refresh - User data exists:", !!userData);
+
     if (token && userData) {
       try {
         const parsedUser = JSON.parse(userData);
@@ -69,8 +72,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clearAuthData();
       }
     } else {
-      console.log("[AuthContext] No auth data found during refresh");
-      clearAuthData();
+      console.log("[AuthContext] No auth data found during refresh - keeping current state");
+      // Don't clear auth data here - just log it
+      // The storage event might fire before data is written
     }
   }, [clearAuthData]);
 
@@ -127,16 +131,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Listen for storage changes (e.g., when user logs in/out in another tab)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "devpay_admin_token" || e.key === "devpay_admin_user") {
-        console.log("[AuthContext] Storage changed, refreshing auth");
-        refreshAuth();
+      // Only handle storage events from OTHER tabs/windows
+      // Ignore storage events triggered by this window
+      if (e.key === "devpay_admin_token" && e.newValue === null) {
+        console.log("[AuthContext] Token removed in another tab, logging out");
+        clearAuthData();
+      } else if ((e.key === "devpay_admin_token" || e.key === "devpay_admin_user") && e.newValue) {
+        console.log("[AuthContext] Auth data updated in another tab, refreshing");
+        setTimeout(() => {
+          refreshAuth();
+        }, 100);
       }
     };
 
     // Listen for window focus (helps with Paystack redirect)
     const handleWindowFocus = () => {
       console.log("[AuthContext] Window focused, checking auth state");
-      refreshAuth();
+      const token = localStorage.getItem("devpay_admin_token");
+      if (token && !isAuthenticated) {
+        // Only refresh if we have a token but aren't authenticated
+        setTimeout(() => {
+          refreshAuth();
+        }, 100);
+      }
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -146,7 +163,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, [refreshAuth]);
+  }, [refreshAuth, isAuthenticated]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -157,9 +174,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.data && response.data.accessToken && response.data.user) {
         const { accessToken, user: userData } = response.data;
 
+        console.log("[AuthContext] Saving token to localStorage:", accessToken);
+        console.log("[AuthContext] Saving user data to localStorage:", userData);
+
         // Store token and user data
         localStorage.setItem("devpay_admin_token", accessToken);
         localStorage.setItem("devpay_admin_user", JSON.stringify(userData));
+
+        // Verify storage
+        const savedToken = localStorage.getItem("devpay_admin_token");
+        const savedUser = localStorage.getItem("devpay_admin_user");
+        console.log("[AuthContext] Verification - Token saved:", !!savedToken);
+        console.log("[AuthContext] Verification - User saved:", !!savedUser);
 
         // Update state
         const userProfile = {
@@ -175,6 +201,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         console.log("[AuthContext] Login successful, user authenticated");
       } else {
+        console.error("[AuthContext] Invalid response structure:", response);
         throw new Error(
           "Invalid response structure - no token or user data received"
         );
