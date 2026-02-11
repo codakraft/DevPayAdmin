@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { useLoginMutation } from "../store/apiSlice";
+import { useLoginMutation, useVerifyLoginMutation } from "../store/apiSlice";
 
 interface User {
   uid: string;
@@ -16,7 +16,11 @@ interface User {
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ sessionId: string; otpSentTo?: string; expiresAt?: string }>;
+  verifyLogin: (sessionId: string, otp: string) => Promise<void>;
   logout: () => Promise<void>;
   user: User | null;
   loading: boolean;
@@ -34,12 +38,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [loginMutation, { isLoading: loginLoading }] = useLoginMutation();
+  const [verifyLoginMutation, { isLoading: verifyLoginLoading }] =
+    useVerifyLoginMutation();
 
   const clearAuthData = useCallback(() => {
     localStorage.removeItem("devpay_admin_token");
     localStorage.removeItem("devpay_admin_user");
     setUser(null);
     setIsAuthenticated(false);
+  }, []);
+
+  const buildUserProfile = useCallback((userData: any): User | null => {
+    const id = userData?.id || userData?.userId || userData?._id;
+    const email =
+      userData?.email || userData?.adminEmail || userData?.userEmail;
+
+    if (!id || !email) {
+      return null;
+    }
+
+    return {
+      uid: id,
+      email,
+      displayName: `${userData?.firstName || ""} ${
+        userData?.lastName || ""
+      }`.trim(),
+    };
   }, []);
 
   const refreshAuth = useCallback(() => {
@@ -50,20 +74,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (token && userData) {
       try {
         const parsedUser = JSON.parse(userData);
-        if (parsedUser && parsedUser.id && parsedUser.email) {
-          setUser({
-            uid: parsedUser.id,
-            email: parsedUser.email,
-            displayName: `${parsedUser.firstName || ""} ${
-              parsedUser.lastName || ""
-            }`.trim(),
-          });
-          setIsAuthenticated(true);
-          console.log("[AuthContext] Auth refreshed successfully");
-        } else {
+        const userProfile = buildUserProfile(parsedUser);
+        if (!userProfile) {
           console.warn("[AuthContext] Invalid user data during refresh");
           clearAuthData();
+          return;
         }
+
+        setUser(userProfile);
+        setIsAuthenticated(true);
+        console.log("[AuthContext] Auth refreshed successfully");
       } catch (error) {
         console.error("[AuthContext] Error refreshing auth:", error);
         clearAuthData();
@@ -72,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log("[AuthContext] No auth data found during refresh");
       clearAuthData();
     }
-  }, [clearAuthData]);
+  }, [buildUserProfile, clearAuthData]);
 
   useEffect(() => {
     // Check if user is logged in on app start
@@ -91,20 +111,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log("[AuthContext] Parsed user data:", parsedUser);
 
           // Validate that the parsed user has required fields
-          if (parsedUser && parsedUser.id && parsedUser.email) {
-            setUser({
-              uid: parsedUser.id,
-              email: parsedUser.email,
-              displayName: `${parsedUser.firstName || ""} ${
-                parsedUser.lastName || ""
-              }`.trim(),
-            });
-            setIsAuthenticated(true);
-            console.log("[AuthContext] User authenticated successfully");
-          } else {
+          const userProfile = buildUserProfile(parsedUser);
+          if (!userProfile) {
             console.warn("[AuthContext] Invalid user data structure");
             clearAuthData();
+            return;
           }
+
+          setUser(userProfile);
+          setIsAuthenticated(true);
+          console.log("[AuthContext] User authenticated successfully");
         } catch (error) {
           console.error("[AuthContext] Error parsing user data:", error);
           clearAuthData();
@@ -153,35 +169,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await loginMutation({ email, password }).unwrap();
       console.log("[AuthContext] Login response:", response);
 
-      // RTK Query returns { success, data: { accessToken, user } }
-      if (response.data && response.data.accessToken && response.data.user) {
-        const { accessToken, user: userData } = response.data;
-
-        // Store token and user data
-        localStorage.setItem("devpay_admin_token", accessToken);
-        localStorage.setItem("devpay_admin_user", JSON.stringify(userData));
-
-        // Update state
-        const userProfile = {
-          uid: userData.id,
-          email: userData.email,
-          displayName: `${userData.firstName || ""} ${
-            userData.lastName || ""
-          }`.trim(),
-        };
-
-        setUser(userProfile);
-        setIsAuthenticated(true);
-
-        console.log("[AuthContext] Login successful, user authenticated");
-      } else {
-        throw new Error(
-          "Invalid response structure - no token or user data received"
-        );
+      // New login response returns sessionId for OTP verification
+      if (response.data && response.data.sessionId) {
+        const { sessionId, otpSentTo, expiresAt } = response.data;
+        localStorage.removeItem("devpay_admin_token");
+        localStorage.removeItem("devpay_admin_user");
+        setUser(null);
+        setIsAuthenticated(false);
+        return { sessionId, otpSentTo, expiresAt };
       }
+
+      throw new Error("Invalid response structure - no sessionId received");
     } catch (error) {
       console.error("[AuthContext] Login error:", error);
       // Clear any existing auth data on login failure
+      localStorage.removeItem("devpay_admin_token");
+      localStorage.removeItem("devpay_admin_user");
+      setUser(null);
+      setIsAuthenticated(false);
+      throw error;
+    }
+  };
+
+  const verifyLogin = async (sessionId: string, otp: string) => {
+    try {
+      const response = await verifyLoginMutation({ sessionId, otp }).unwrap();
+      console.log("[AuthContext] Verify login response:", response);
+
+      const accessToken =
+        response?.data?.accessToken ||
+        response?.data?.data?.accessToken ||
+        response?.accessToken;
+      const userData =
+        response?.data?.user || response?.data?.data?.user || response?.user;
+
+      if (accessToken && userData) {
+        localStorage.setItem("devpay_admin_token", accessToken);
+        localStorage.setItem("devpay_admin_user", JSON.stringify(userData));
+
+        const userProfile = buildUserProfile(userData);
+        if (!userProfile) {
+          throw new Error("Invalid user data from verify-login");
+        }
+
+        setUser(userProfile);
+        setIsAuthenticated(true);
+        console.log("[AuthContext] OTP verified, user authenticated");
+        return;
+      }
+
+      throw new Error("Invalid response structure - no token or user data");
+    } catch (error) {
+      console.error("[AuthContext] Verify login error:", error);
       localStorage.removeItem("devpay_admin_token");
       localStorage.removeItem("devpay_admin_user");
       setUser(null);
@@ -203,7 +242,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       value={{
         isAuthenticated,
         login,
-        loading: loading || loginLoading,
+        verifyLogin,
+        loading: loading || loginLoading || verifyLoginLoading,
         logout,
         user,
         refreshAuth,

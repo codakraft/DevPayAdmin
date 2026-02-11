@@ -10,6 +10,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./components/DashboardLayout";
 import LoginPage from "./pages/authentication/loginPage";
+import LoginOtpPage from "./pages/authentication/loginOtpPage";
 
 // Import dashboard pages
 import Dashboard from "./pages/dashboard";
@@ -45,6 +46,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/login-otp" element={<LoginOtpPage />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
 
           <Route element={<ProtectedRoute />}>

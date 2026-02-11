@@ -26,9 +26,16 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      // AuthContext will set isAuthenticated, redirect to intended location or dashboard
-      navigate(from, { replace: true });
+      const { sessionId, otpSentTo } = await login(email, password);
+      localStorage.setItem("devpay_admin_session_id", sessionId);
+      localStorage.setItem("devpay_admin_post_login_path", from);
+      if (otpSentTo) {
+        localStorage.setItem("devpay_admin_otp_sent_to", otpSentTo);
+      }
+      navigate("/login-otp", {
+        replace: true,
+        state: { from, otpSentTo },
+      });
     } catch (error: any) {
       console.error("Login failed:", error);
       setError("Login failed. Please check your credentials and try again.");

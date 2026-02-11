@@ -1,11 +1,11 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { API_BASE_URL } from "../config/environment";
 import { AdminUserResponse, CompanyDashboardResponse, CreateLoanData, WalletResponse, FundWalletRequestData, FundWalletResponse, CompleteFundWalletRequestData, CompleteFundWalletResponse, WalletTransactionsResponse, WalletTransactionsRequest } from "../types/types";
 
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({
-    baseUrl:
-      "https://staginlending-fvexbmfhawe7e6ad.southafricanorth-01.azurewebsites.net/api/v1/",
+    baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
       const token = localStorage.getItem("devpay_admin_token");
       console.log("[apiSlice] devpay_admin_token:", token);
@@ -22,6 +22,13 @@ export const apiSlice = createApi({
     login: builder.mutation<any, { email: string; password: string }>({
       query: (body) => ({
         url: `admin/login`,
+        method: "POST",
+        body,
+      }),
+    }),
+    verifyLogin: builder.mutation<any, { sessionId: string; otp: string }>({
+      query: (body) => ({
+        url: `admin/verify-login`,
         method: "POST",
         body,
       }),
@@ -150,6 +157,7 @@ export const apiSlice = createApi({
 
 export const {
   useLoginMutation,
+  useVerifyLoginMutation,
   useGetDashboardQuery,
   useLazyGetLoanProductQuery,
   useCreateLoanProductMutation,
