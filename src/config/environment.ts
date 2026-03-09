@@ -16,23 +16,7 @@ const environment = {
 
 // Get current environment
 const getCurrentEnvironment = (): keyof typeof environment => {
-  // Check for custom environment variable first (highest priority)
-  const customEnv = process.env.REACT_APP_ENV as keyof typeof environment;
-  if (customEnv && environment[customEnv]) {
-    return customEnv;
-  }
-  
-  // Check NODE_ENV as fallback
-  if (process.env.NODE_ENV === "development") {
-    return "development";
-  }
-  
-  // Check if running in test mode
-  if (process.env.NODE_ENV === "test") {
-    return "test";
-  }
-  
-  // Default to development
+  // Pointing to development environment
   return "development";
 };
 

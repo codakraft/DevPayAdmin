@@ -12,7 +12,7 @@ export default function UnpaidLoan() {
   const fetchLoans = async () => {
     try {
       const response = await getLoans({ status: 6 }).unwrap();
-      console.log("Fetched loans:", response);
+     
       if (response?.data) {
         setData(response.data.loans);
       }

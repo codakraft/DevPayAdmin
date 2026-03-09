@@ -135,8 +135,6 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
   const [dateFilter, setDateFilter] = useState("");
   const navigate = useNavigate();
 
-  console.log("Loan Request Data:", data);
-
   // Filter data based on search query, status filter, and date filter
   const filteredData = useMemo(() => {
     return data.filter((loan) => {

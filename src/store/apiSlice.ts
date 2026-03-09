@@ -19,6 +19,17 @@ export const apiSlice = createApi({
     },
   }),
   endpoints: (builder) => ({
+        changePassword: builder.mutation<any, {
+          currentPassword: string;
+          newPassword: string;
+          confirmNewPassword: string;
+        }>({
+          query: (body) => ({
+            url: `admin/change-password`,
+            method: "POST",
+            body,
+          }),
+        }),
     login: builder.mutation<any, { email: string; password: string }>({
       query: (body) => ({
         url: `admin/login`,
@@ -66,11 +77,36 @@ export const apiSlice = createApi({
         body,
       }),
     }),
-    getLoans: builder.query<any, {status: number}>({
-      query: ({status}) => ({
-        url: `company/loans?Status=${status}`,
+    getRoles: builder.query<string[], void>({
+      query: () => ({
+        url: `admin/roles`,
         method: "GET",
       }),
+    }),
+    createUser: builder.mutation<any, {
+      firstName: string;
+      lastName: string;
+      email: string;
+      password: string;
+      role: string;
+      phoneNumber?: string;
+    }>({
+      query: (body) => ({
+        url: `company/users/create`,
+        method: "POST",
+        body,
+      }),
+    }),
+    getLoans: builder.query<any, {status?: number | number[]}>({
+      query: ({status}) => {
+        const statusParam = Array.isArray(status) 
+          ? status.map(s => `Status=${s}`).join('&')
+          : status ? `Status=${status}` : '';
+        return {
+          url: `company/loans${statusParam ? `?${statusParam}` : ''}`,
+          method: "GET",
+        };
+      },
     }),
     getLoansByID: builder.query<any, {id: string}>({
       query: ({id}) => ({
@@ -152,6 +188,12 @@ export const apiSlice = createApi({
         method: "POST",
       }),
     }),
+    getAuditTrail: builder.query<any, { page?: number; pageSize?: number }>({
+      query: ({ page = 1, pageSize = 50 }) => ({
+        url: `Audit?page=${page}&pageSize=${pageSize}`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -175,5 +217,9 @@ export const {
   useLogoutMutation,
   useLazyGetLoansByIDQuery,
   useDisburseLoanMutation,
-  useLazyGetDisbursementsQuery
+  useLazyGetDisbursementsQuery,
+  useLazyGetAuditTrailQuery,
+  useGetRolesQuery,
+  useCreateUserMutation,
+  useChangePasswordMutation,
 } = apiSlice;

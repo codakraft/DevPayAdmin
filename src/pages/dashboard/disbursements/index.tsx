@@ -25,7 +25,7 @@ const Disburse: React.FC = () => {
 
   const fetchLoans = React.useCallback(async () => {
     try {
-      const response = await getLoans({ status: 9 }).unwrap();
+      const response = await getLoans({ status: [9, 2] }).unwrap();
       console.log("Fetched approved loans:", response.data);
       if (response?.data?.loans) {
         setLoans(Array.isArray(response.data.loans) ? response.data.loans : []);
@@ -50,7 +50,7 @@ const Disburse: React.FC = () => {
             .includes(searchTerm.toLowerCase()) ||
           loan.userLastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           loan.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          loan.purpose?.toLowerCase().includes(searchTerm.toLowerCase())
+          loan.purpose?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     : [];
 
@@ -58,7 +58,7 @@ const Disburse: React.FC = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedLoans = filteredLoans.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   const formatDate = (dateString: string) => {

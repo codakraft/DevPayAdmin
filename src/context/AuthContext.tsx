@@ -20,7 +20,7 @@ interface AuthContextType {
     email: string,
     password: string,
   ) => Promise<{ sessionId: string; otpSentTo?: string; expiresAt?: string }>;
-  verifyLogin: (sessionId: string, otp: string) => Promise<void>;
+  verifyLogin: (sessionId: string, otp: string) => Promise<any>;
   logout: () => Promise<void>;
   user: User | null;
   loading: boolean;
@@ -67,7 +67,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const refreshAuth = useCallback(() => {
-    console.log("[AuthContext] Refreshing authentication state");
     const token = localStorage.getItem("devpay_admin_token");
     const userData = localStorage.getItem("devpay_admin_user");
 
@@ -89,8 +88,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clearAuthData();
       }
     } else {
-      console.log("[AuthContext] No auth data found during refresh");
-      clearAuthData();
+      console.log(
+        "[AuthContext] No auth data found during refresh - keeping current state",
+      );
+      // Don't clear auth data here - just log it
+      // The storage event might fire before data is written
     }
   }, [buildUserProfile, clearAuthData]);
 
@@ -108,7 +110,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token && userData) {
         try {
           const parsedUser = JSON.parse(userData);
-          console.log("[AuthContext] Parsed user data:", parsedUser);
 
           // Validate that the parsed user has required fields
           const userProfile = buildUserProfile(parsedUser);
@@ -143,16 +144,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Listen for storage changes (e.g., when user logs in/out in another tab)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "devpay_admin_token" || e.key === "devpay_admin_user") {
-        console.log("[AuthContext] Storage changed, refreshing auth");
-        refreshAuth();
+      // Only handle storage events from OTHER tabs/windows
+      // Ignore storage events triggered by this window
+      if (e.key === "devpay_admin_token" && e.newValue === null) {
+        console.log("[AuthContext] Token removed in another tab, logging out");
+        clearAuthData();
+      } else if (
+        (e.key === "devpay_admin_token" || e.key === "devpay_admin_user") &&
+        e.newValue
+      ) {
+        console.log(
+          "[AuthContext] Auth data updated in another tab, refreshing",
+        );
+        setTimeout(() => {
+          refreshAuth();
+        }, 100);
       }
     };
 
     // Listen for window focus (helps with Paystack redirect)
     const handleWindowFocus = () => {
       console.log("[AuthContext] Window focused, checking auth state");
-      refreshAuth();
+      const token = localStorage.getItem("devpay_admin_token");
+      if (token && !isAuthenticated) {
+        // Only refresh if we have a token but aren't authenticated
+        setTimeout(() => {
+          refreshAuth();
+        }, 100);
+      }
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -162,7 +181,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, [refreshAuth]);
+  }, [refreshAuth, isAuthenticated]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -196,6 +215,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await verifyLoginMutation({ sessionId, otp }).unwrap();
       console.log("[AuthContext] Verify login response:", response);
 
+      // Check if password change is required
+      if (
+        response?.data?.requiresPasswordChange ||
+        response?.requiresPasswordChange
+      ) {
+        return response;
+      }
+
       const accessToken =
         response?.data?.accessToken ||
         response?.data?.data?.accessToken ||
@@ -215,7 +242,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userProfile);
         setIsAuthenticated(true);
         console.log("[AuthContext] OTP verified, user authenticated");
-        return;
+        return response;
       }
 
       throw new Error("Invalid response structure - no token or user data");

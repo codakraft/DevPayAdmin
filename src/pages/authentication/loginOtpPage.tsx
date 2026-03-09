@@ -64,7 +64,15 @@ const LoginOtpPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      await verifyLogin(sessionId, otp);
+      const response = await verifyLogin(sessionId, otp);
+
+      // Check if password change is required
+      if (response?.data?.requiresPasswordChange === true) {
+        navigate("/change-password", { replace: true });
+        return;
+      }
+
+      // Authenticate and redirect to dashboard
       refreshAuth();
       setShouldRedirect(true);
     } catch (err) {

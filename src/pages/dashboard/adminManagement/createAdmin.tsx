@@ -1,51 +1,88 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import "./styless.css";
-import admin from "../../../assets/admin.svg";
-import filter from "../../../assets/filter.svg";
+import {
+  useGetRolesQuery,
+  useCreateUserMutation,
+} from "../../../store/apiSlice";
+import { useNavigate } from "react-router-dom";
 
 function CreateAdmin() {
-  const navigate = useNavigate();
-  const [activeTimeFilter, setActiveTimeFilter] = useState<"week" | "year">(
-    "week"
-  );
-  const [searchQuery, setSearchQuery] = useState<string>("");
-
   // Form state
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
     lastName: "",
     email: "",
     password: "",
-    role: "Admin"
+    role: "",
   });
 
   // Validation state
   const [errors, setErrors] = useState({
-    name: "",
+    firstName: "",
     lastName: "",
     email: "",
     password: "",
-    role: ""
+    role: "",
   });
+
+  // Fetch roles from API
+  const {
+    data: rolesResponse,
+    isLoading: rolesLoading,
+    isError: rolesError,
+  } = useGetRolesQuery();
+  // Map roles to array of { id, name }
+  let roles: { id: string; name: string }[] = [];
+  if (
+    Array.isArray(rolesResponse) &&
+    rolesResponse.length > 0 &&
+    typeof rolesResponse[0] === "object" &&
+    rolesResponse[0] !== null &&
+    "id" in rolesResponse[0] &&
+    "name" in rolesResponse[0]
+  ) {
+    roles = (rolesResponse as any[]).map((r) => ({
+      id: (r as any).id,
+      name: (r as any).name,
+    }));
+  } else if (
+    rolesResponse &&
+    typeof rolesResponse === "object" &&
+    Array.isArray((rolesResponse as any).data) &&
+    (rolesResponse as any).data.length > 0 &&
+    typeof (rolesResponse as any).data[0] === "object" &&
+    "id" in (rolesResponse as any).data[0] &&
+    "name" in (rolesResponse as any).data[0]
+  ) {
+    roles = ((rolesResponse as any).data as any[]).map((r) => ({
+      id: r.id,
+      name: r.name,
+    }));
+  }
+  const [createUser, { isLoading: creatingUser }] = useCreateUserMutation();
+
+  const navigate = useNavigate();
+
+  console.log("Roles data:", roles);
 
   // Form submission state
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   // Handle input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: value,
     });
-    
     // Clear error when user types
     if (errors[name as keyof typeof errors]) {
       setErrors({
         ...errors,
-        [name]: ""
+        [name]: "",
       });
     }
   };
@@ -61,9 +98,9 @@ function CreateAdmin() {
     let valid = true;
     const newErrors = { ...errors };
 
-    // Validate name
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
+    // Validate first name
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = "First Name is required";
       valid = false;
     }
 
@@ -99,28 +136,23 @@ function CreateAdmin() {
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (validateForm()) {
       setSubmitting(true);
-      
-      // Simulate API call
-      setTimeout(() => {
-        console.log("Form data submitted:", formData);
+      try {
+        await createUser(formData).unwrap();
         setSubmitSuccess(true);
         setSubmitting(false);
-        
-        // Reset form after success
-        // Uncomment if you want to reset the form after submission
-        // setFormData({
-        //   name: "",
-        //   lastName: "",
-        //   email: "",
-        //   password: "",
-        //   role: "Admin"
-        // });
-      }, 1000);
+        navigate("/dashboard/adminManagement");
+        // Optionally reset form
+        // setFormData({ firstName: "", lastName: "", email: "", password: "", role: "" });
+      } catch (error: any) {
+        setSubmitting(false);
+        setSubmitSuccess(false);
+        // Optionally handle error
+        alert(error?.data?.message || "Failed to create admin");
+      }
     }
   };
 
@@ -135,19 +167,21 @@ function CreateAdmin() {
         <div className="admin-form-container">
           <form onSubmit={handleSubmit} className="admin-creation-form">
             <div className="form-group">
-              <label htmlFor="name">
-                Name <span className="required-mark">*</span>
+              <label htmlFor="firstName">
+                First Name <span className="required-mark">*</span>
               </label>
               <input
                 type="text"
-                id="name"
-                name="name"
+                id="firstName"
+                name="firstName"
                 placeholder="James"
-                value={formData.name}
+                value={formData.firstName}
                 onChange={handleInputChange}
-                className={errors.name ? "input-error" : ""}
+                className={errors.firstName ? "input-error" : ""}
               />
-              {errors.name && <div className="error-message">{errors.name}</div>}
+              {errors.firstName && (
+                <div className="error-message">{errors.firstName}</div>
+              )}
             </div>
 
             <div className="form-group">
@@ -163,7 +197,9 @@ function CreateAdmin() {
                 onChange={handleInputChange}
                 className={errors.lastName ? "input-error" : ""}
               />
-              {errors.lastName && <div className="error-message">{errors.lastName}</div>}
+              {errors.lastName && (
+                <div className="error-message">{errors.lastName}</div>
+              )}
             </div>
 
             <div className="form-group">
@@ -179,7 +215,9 @@ function CreateAdmin() {
                 onChange={handleInputChange}
                 className={errors.email ? "input-error" : ""}
               />
-              {errors.email && <div className="error-message">{errors.email}</div>}
+              {errors.email && (
+                <div className="error-message">{errors.email}</div>
+              )}
             </div>
 
             <div className="form-group">
@@ -195,7 +233,9 @@ function CreateAdmin() {
                 onChange={handleInputChange}
                 className={errors.password ? "input-error" : ""}
               />
-              {errors.password && <div className="error-message">{errors.password}</div>}
+              {errors.password && (
+                <div className="error-message">{errors.password}</div>
+              )}
             </div>
 
             <div className="form-group">
@@ -208,23 +248,35 @@ function CreateAdmin() {
                 value={formData.role}
                 onChange={handleInputChange}
                 className={errors.role ? "input-error" : ""}
+                disabled={rolesLoading || rolesError}
               >
-                <option value="Admin">Admin</option>
-                <option value="Super Admin">Super Admin</option>
-                <option value="Moderator">Moderator</option>
-                <option value="Support">Support</option>
+                <option value="">
+                  {rolesLoading ? "Loading roles..." : "Select a role"}
+                </option>
+                {roles.map((role) => (
+                  <option key={role.id} value={role.name}>
+                    {role.name}
+                  </option>
+                ))}
               </select>
-              {errors.role && <div className="error-message">{errors.role}</div>}
+              {errors.role && (
+                <div className="error-message">{errors.role}</div>
+              )}
+              {rolesError && (
+                <div className="error-message">Failed to load roles</div>
+              )}
             </div>
 
-            <p className="info-text">Invites will be sent automatically to the mail of the recipient</p>
+            <p className="info-text">
+              Invites will be sent automatically to the mail of the recipient
+            </p>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="save-button"
-              disabled={submitting}
+              disabled={submitting || creatingUser}
             >
-              {submitting ? "Saving..." : "Save"}
+              {submitting || creatingUser ? "Saving..." : "Save"}
             </button>
 
             {submitSuccess && (

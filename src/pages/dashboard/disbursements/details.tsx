@@ -78,6 +78,12 @@ const DisbursementDetails: React.FC = () => {
     switch (status) {
       case 2:
         return <span className="status-badge status-approved">Approved</span>;
+      case 9:
+        return (
+          <span className="status-badge status-offer-letter-signed">
+            Offer Letter Signed
+          </span>
+        );
       case 3:
         return <span className="status-badge status-disbursed">Disbursed</span>;
       default:
@@ -108,7 +114,7 @@ const DisbursementDetails: React.FC = () => {
     } catch (error: any) {
       console.error("Failed to disburse loan:", error);
       setErrorMessage(
-        error.data?.message || "An error occurred while disbursing the loan"
+        error.data?.message || "An error occurred while disbursing the loan",
       );
       setShowErrorModal(true);
     }
@@ -126,6 +132,8 @@ const DisbursementDetails: React.FC = () => {
     if (!loan) return 0;
     return calculateTotalRepayment() / loan.durationInMonths;
   };
+
+  console.log("Loan details:", loan);
 
   if (isLoading) {
     return (
@@ -286,7 +294,7 @@ const DisbursementDetails: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        {loan.status === 9 && (
+        {(loan.status === 9 || loan.status === 2) && (
           <div className="action-buttons">
             <button
               className="disburse-btn"
