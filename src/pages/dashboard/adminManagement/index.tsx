@@ -6,9 +6,12 @@ import admin from "../../../assets/admin.svg";
 import filter from "../../../assets/filter.svg";
 import AdminTable from "./components/adminTable";
 import { AdminUser, AdminUserResponse } from "../../../types/types";
+import { useAuth } from "../../../context/AuthContext";
+import { Permissions } from "../../../helpers/auth";
 
 function AdminManagement() {
   const navigate = useNavigate();
+  const { can, isSuperAdmin } = useAuth();
   const [activeTimeFilter, setActiveTimeFilter] = useState<"week" | "year">(
     "week"
   );
@@ -33,21 +36,29 @@ function AdminManagement() {
       <div className="users-section">
         <div className="admin-management-actions">
           <div className="action-buttons">
-            <button
-              className="create-admin-button"
-              onClick={handleCreateAdminClick}
-            >
-              <img src={admin} alt="Create Admin" className="admin-icon" />
-              Create Admin
-            </button>
+            {can(Permissions.UsersManage) && (
+              <button
+                className="create-admin-button"
+                onClick={handleCreateAdminClick}
+              >
+                <img src={admin} alt="Create Admin" className="admin-icon" />
+                Create Admin
+              </button>
+            )}
 
-            <button
-              className="create-roles-button"
-              onClick={handleCreateAdminRolesClick}
-            >
-              <img src={admin} alt="Create Roles" className="admin-icon" />
-              Create Roles
-            </button>
+            {isSuperAdmin && (
+              <button
+                className="create-roles-button"
+                onClick={handleCreateAdminRolesClick}
+              >
+                <img
+                  src={admin}
+                  alt="Roles and Permissions"
+                  className="admin-icon"
+                />
+                Roles & Permissions
+              </button>
+            )}
           </div>
         </div>
         <AdminTable />

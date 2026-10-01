@@ -1,32 +1,77 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./styles.css";
-import { AdminUser } from "../../../../types/types";
-import { useGetAdminUserQuery } from "../../../../store/apiSlice";
+import { AdminUser, AdminUserQueryParams } from "../../../../types/types";
+import {
+  useGetAdminUserQuery,
+  useLazyGetAdminUserQuery,
+} from "../../../../store/apiSlice";
+import {
+  formatDate,
+  formatRoleName,
+  formatUserRoles,
+} from "../../../../helpers";
+import useRoleOptions from "../useRoleOptions";
+import useAdminUserActions, { userRoleNames } from "../useAdminUserActions";
 
-interface User {
-  id: number;
-  avatarBg: string;
-  initial: string;
-  fullName: string;
-  email: string;
-  username: string;
-  dateOfBirth: string;
-  gender: string;
-  dateCreated: string;
-}
+const EXPORT_PAGE_SIZE = 100;
 
 const AdminTable: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [exporting, setExporting] = useState(false);
 
-  const { data, isLoading } = useGetAdminUserQuery();
+  const { roles } = useRoleOptions();
+  const { assignableRoles, busyUserId, canManageUser, changeRole, setActive } =
+    useAdminUserActions();
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [roleDialogUser, setRoleDialogUser] = useState<AdminUser | null>(null);
+  const [newRoleId, setNewRoleId] = useState("");
 
-  // Removed manual fetch logic for efficiency. Use RTK Query hook instead.
+  // Close the row menu on any outside click
+  useEffect(() => {
+    if (!menuOpenId) return;
+    const close = () => setMenuOpenId(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [menuOpenId]);
 
-  console.log("AdminData:", data?.data.users);
+  // Debounce search so we don't hit the API on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  // Remove unused users variable
+  // Go back to the first page whenever the filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, roleFilter, createdFrom, createdTo, pageSize]);
+
+  const filters: AdminUserQueryParams = {
+    Search: debouncedSearch || undefined,
+    Role: roleFilter || undefined,
+    CreatedFrom: createdFrom || undefined,
+    // Include the whole "to" day
+    CreatedTo: createdTo ? `${createdTo}T23:59:59` : undefined,
+  };
+
+  const { data, isFetching } = useGetAdminUserQuery({
+    ...filters,
+    Page: currentPage,
+    PageSize: pageSize,
+  });
+  const [fetchAdminUsers] = useLazyGetAdminUserQuery();
+
+  const users = data?.data?.users ?? [];
+  const totalCount = data?.data?.totalCount ?? 0;
+  const totalPages = Math.max(data?.data?.totalPages ?? 1, 1);
+  const hasFilters = Boolean(roleFilter || createdFrom || createdTo);
 
   const handleRowClick = (user: AdminUser) => {
     navigate(`/admin-management/admin-userProfile/${user.id}`, {
@@ -34,153 +79,321 @@ const AdminTable: React.FC = () => {
     });
   };
 
-  // Filter users based on search query
-  const filteredUsers = useMemo(() => {
-    const admins = data?.data?.users ?? [];
-    return admins.filter(
-      (user: AdminUser) =>
-        user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [data, searchQuery]);
+  const openRoleDialog = (user: AdminUser) => {
+    setMenuOpenId(null);
+    setNewRoleId("");
+    setRoleDialogUser(user);
+  };
 
-  const exportToCSV = () => {
-    // Define CSV headers
-    const headers = ["Full Name", "Email", "Role", "Gender", "Date Created"];
+  const handleChangeRole = async () => {
+    if (!roleDialogUser || !newRoleId) return;
+    if (await changeRole(roleDialogUser, newRoleId)) setRoleDialogUser(null);
+  };
 
-    // Convert data to CSV format
-    const csvData = [
-      headers.join(","), // Header row
-      ...filteredUsers.map((user: AdminUser) =>
-        [
-          `"${user.fullName}"`, // Wrap in quotes to handle names with commas
-          `"${user.email}"`,
-          `"${user.role}"`,
-          `"${user.gender}"`,
-          `"${user.createdAt}"`,
-        ].join(",")
-      ),
-    ].join("\n");
+  const handleToggleActive = (user: AdminUser) => {
+    setMenuOpenId(null);
+    setActive(user, !user.isActive);
+  };
 
-    // Create and download CSV file
-    const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `admin-users-${new Date().toISOString().split("T")[0]}.csv`
-    );
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const clearFilters = () => {
+    setRoleFilter("");
+    setCreatedFrom("");
+    setCreatedTo("");
+  };
+
+  const escapeCsv = (value: string | null | undefined) =>
+    `"${(value ?? "").replace(/"/g, '""')}"`;
+
+  // Export every record matching the current filters, not just the visible page
+  const exportToCSV = async () => {
+    setExporting(true);
+    try {
+      const allUsers: AdminUser[] = [];
+      let page = 1;
+      let hasNextPage = true;
+      while (hasNextPage) {
+        const response = await fetchAdminUsers({
+          ...filters,
+          Page: page,
+          PageSize: EXPORT_PAGE_SIZE,
+        }).unwrap();
+        allUsers.push(...(response?.data?.users ?? []));
+        hasNextPage = Boolean(response?.data?.hasNextPage);
+        page += 1;
+      }
+
+      const headers = ["Full Name", "Email", "Role", "Date Created"];
+      const csvData = [
+        headers.join(","),
+        ...allUsers.map((user) =>
+          [
+            escapeCsv(user.fullName),
+            escapeCsv(user.email),
+            escapeCsv(formatUserRoles(user)),
+            escapeCsv(formatDate(user.createdAt)),
+          ].join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `admin-users-${new Date().toISOString().split("T")[0]}.csv`
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      alert(error?.data?.message || "Failed to export admin users");
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
     <div className="users-table-wrapper">
-      {isLoading && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: 200,
-          }}
-        >
-          <div
-            className="spinner"
-            style={{
-              width: 40,
-              height: 40,
-              border: "4px solid #eee",
-              borderTop: "4px solid #3A7145",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-            }}
-          />
-          <style>
-            {`@keyframes spin {
-                      0% { transform: rotate(0deg); }
-                      100% { transform: rotate(360deg); }
-                    }`}
-          </style>
-        </div>
-      )}
       <div className="table-controls">
         <div className="search-container">
           <input
             type="text"
-            placeholder="Search by name, email or username..."
+            placeholder="Search by name or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
           />
         </div>
         <div className="export-container">
-          <button onClick={exportToCSV} className="export-btn">
-            Export CSV
+          <button
+            onClick={exportToCSV}
+            className="export-btn"
+            disabled={exporting || totalCount === 0}
+          >
+            {exporting ? "Exporting..." : "Export CSV"}
           </button>
         </div>
+      </div>
+
+      <div className="table-filters">
+        <label className="filter-field">
+          <span>Role</span>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+          >
+            <option value="">All roles</option>
+            {roles.map((role) => (
+              <option key={role.id} value={role.name}>
+                {formatRoleName(role.name)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="filter-field">
+          <span>Created from</span>
+          <input
+            type="date"
+            value={createdFrom}
+            max={createdTo || undefined}
+            onChange={(e) => setCreatedFrom(e.target.value)}
+          />
+        </label>
+        <label className="filter-field">
+          <span>Created to</span>
+          <input
+            type="date"
+            value={createdTo}
+            min={createdFrom || undefined}
+            onChange={(e) => setCreatedTo(e.target.value)}
+          />
+        </label>
+        {hasFilters && (
+          <button className="clear-filters-btn" onClick={clearFilters}>
+            Clear filters
+          </button>
+        )}
       </div>
 
       <table className="users-table">
         <thead>
           <tr>
-            <th className="checkbox-column">
-              <input type="checkbox" />
-            </th>
             <th>Full Name</th>
             <th>Email</th>
             <th>Role</th>
-            {/* <th>Gender</th> */}
+            <th>Status</th>
             <th>Date Created</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          {filteredUsers?.map((user: AdminUser) => (
-            <tr
-              key={user.id}
-              onClick={() => handleRowClick(user)}
-              style={{ cursor: "pointer" }}
-            >
-              <td
-                className="checkbox-column"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <input type="checkbox" />
-              </td>
-              <td>
-                <div className="user-info">
-                  {/* <div
-                    className="user-avatar"
-                    style={{ backgroundColor: user.role }}
-                  >
-                    {user.firstName.charAt(0).toUpperCase()}
-                  </div> */}
-                  <span>{user.fullName}</span>
-                </div>
-              </td>
-              <td>{user.email}</td>
-              <td>{user.role}</td>
-              {/* <td>{user.phoneNumber}</td> */}
-              {/* <td>{user.gender}</td> */}
-              <td>{user.createdAt}</td>
-              {/* <td onClick={(e) => e.stopPropagation()}>
-                <button className="more-options">⋮</button>
-              </td> */}
-            </tr>
-          ))}
-          {filteredUsers.length === 0 && (
+          {isFetching ? (
             <tr>
-              <td colSpan={8} style={{ textAlign: "center", padding: "20px" }}>
+              <td colSpan={6} style={{ textAlign: "center", padding: "20px" }}>
+                Loading...
+              </td>
+            </tr>
+          ) : users.length === 0 ? (
+            <tr>
+              <td colSpan={6} style={{ textAlign: "center", padding: "20px" }}>
                 No users found matching your search criteria.
               </td>
             </tr>
+          ) : (
+            users.map((user: AdminUser) => (
+              <tr
+                key={user.id}
+                onClick={() => handleRowClick(user)}
+                style={{ cursor: "pointer" }}
+              >
+                <td>
+                  <div className="user-info">
+                    <span>{user.fullName}</span>
+                  </div>
+                </td>
+                <td>{user.email}</td>
+                <td>{formatUserRoles(user)}</td>
+                <td>
+                  <span
+                    className={`status-badge ${
+                      user.isActive ? "active" : "inactive"
+                    }`}
+                  >
+                    {user.isActive ? "Active" : "Deactivated"}
+                  </span>
+                </td>
+                <td>{formatDate(user.createdAt)}</td>
+                <td
+                  className="row-actions"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {canManageUser(user) && (
+                    <>
+                      <button
+                        type="button"
+                        className="more-options"
+                        aria-label="More options"
+                        disabled={busyUserId === user.id}
+                        onClick={(e) => {
+                          e.nativeEvent.stopImmediatePropagation();
+                          setMenuOpenId(
+                            menuOpenId === user.id ? null : user.id
+                          );
+                        }}
+                      >
+                        {busyUserId === user.id ? "…" : "⋮"}
+                      </button>
+                      {menuOpenId === user.id && (
+                        <div className="row-menu">
+                          <button
+                            type="button"
+                            onClick={() => openRoleDialog(user)}
+                          >
+                            Change role
+                          </button>
+                          <button
+                            type="button"
+                            className={user.isActive ? "danger" : ""}
+                            onClick={() => handleToggleActive(user)}
+                          >
+                            {user.isActive ? "Deactivate" : "Activate"}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))
           )}
         </tbody>
       </table>
+
+      {roleDialogUser && (
+        <div
+          className="role-dialog-backdrop"
+          onClick={() => !busyUserId && setRoleDialogUser(null)}
+        >
+          <div className="role-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3>Change role</h3>
+            <p>
+              {roleDialogUser.fullName} is currently{" "}
+              <strong>{formatUserRoles(roleDialogUser)}</strong>.
+            </p>
+            <select
+              value={newRoleId}
+              onChange={(e) => setNewRoleId(e.target.value)}
+            >
+              <option value="">Select a new role</option>
+              {assignableRoles
+                .filter(
+                  (role) => !userRoleNames(roleDialogUser).includes(role.name)
+                )
+                .map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {formatRoleName(role.name)}
+                  </option>
+                ))}
+            </select>
+            <div className="role-dialog-actions">
+              <button
+                type="button"
+                className="clear-filters-btn"
+                onClick={() => setRoleDialogUser(null)}
+                disabled={!!busyUserId}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="export-btn"
+                onClick={handleChangeRole}
+                disabled={!newRoleId || !!busyUserId}
+              >
+                {busyUserId ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="table-pagination">
+        <div className="pagination-summary">
+          Showing {totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
+          {Math.min(currentPage * pageSize, totalCount)} of {totalCount} records
+        </div>
+        <div className="pagination-controls">
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+          >
+            <option value={10}>10 per page</option>
+            <option value={25}>25 per page</option>
+            <option value={50}>50 per page</option>
+            <option value={100}>100 per page</option>
+          </select>
+          <button
+            className="pagination-btn"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage <= 1 || isFetching}
+          >
+            Previous
+          </button>
+          <span className="pagination-current">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            className="pagination-btn"
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+            disabled={!data?.data?.hasNextPage || isFetching}
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

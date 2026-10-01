@@ -5,8 +5,24 @@ import React, {
   ReactNode,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
-import { useLoginMutation, useVerifyLoginMutation } from "../store/apiSlice";
+import {
+  storeTokens,
+  useLoginMutation,
+  useVerifyLoginMutation,
+} from "../store/apiSlice";
+import {
+  ACCESS_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  USER_KEY,
+  PENDING_USER_KEY,
+  AUTH_TOKEN_CHANGED_EVENT,
+  clearStoredAuth,
+  decodeToken,
+  hasPermission,
+  isSuperAdmin as claimsAreSuperAdmin,
+} from "../helpers/auth";
 
 interface User {
   uid: string;
@@ -25,6 +41,14 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   refreshAuth: () => void;
+  // Stores the tokens returned by change-password and signs the user in
+  completePasswordChange: (changePasswordResponse: any) => boolean;
+  roles: string[];
+  permissions: string[];
+  passwordChangeRequired: boolean;
+  isSuperAdmin: boolean;
+  can: (permission: string) => boolean;
+  hasRole: (...roles: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,17 +57,26 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const getAuthData = (response: any) =>
+  response?.data?.data || response?.data || response;
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(() =>
+    localStorage.getItem(ACCESS_TOKEN_KEY),
+  );
   const [loginMutation, { isLoading: loginLoading }] = useLoginMutation();
   const [verifyLoginMutation, { isLoading: verifyLoginLoading }] =
     useVerifyLoginMutation();
 
+  // Roles and permissions come from the JWT and are re-derived whenever it changes
+  const claims = useMemo(() => decodeToken(accessToken), [accessToken]);
+
   const clearAuthData = useCallback(() => {
-    localStorage.removeItem("devpay_admin_token");
-    localStorage.removeItem("devpay_admin_user");
+    clearStoredAuth();
+    setAccessToken(null);
     setUser(null);
     setIsAuthenticated(false);
   }, []);
@@ -67,8 +100,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const refreshAuth = useCallback(() => {
-    const token = localStorage.getItem("devpay_admin_token");
-    const userData = localStorage.getItem("devpay_admin_user");
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const userData = localStorage.getItem(USER_KEY);
 
     if (token && userData) {
       try {
@@ -80,32 +113,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
+        setAccessToken(token);
         setUser(userProfile);
         setIsAuthenticated(true);
-        console.log("[AuthContext] Auth refreshed successfully");
       } catch (error) {
         console.error("[AuthContext] Error refreshing auth:", error);
         clearAuthData();
       }
-    } else {
-      console.log(
-        "[AuthContext] No auth data found during refresh - keeping current state",
-      );
-      // Don't clear auth data here - just log it
-      // The storage event might fire before data is written
     }
+    // No auth data: keep the current state. The storage event might fire
+    // before the data is written.
   }, [buildUserProfile, clearAuthData]);
 
   useEffect(() => {
     // Check if user is logged in on app start
     const initializeAuth = () => {
-      const token = localStorage.getItem("devpay_admin_token");
-      const userData = localStorage.getItem("devpay_admin_user");
-
-      console.log("[AuthContext] Initializing auth...", {
-        token: !!token,
-        userData: !!userData,
-      });
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+      const userData = localStorage.getItem(USER_KEY);
 
       if (token && userData) {
         try {
@@ -119,24 +143,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             return;
           }
 
+          setAccessToken(token);
           setUser(userProfile);
           setIsAuthenticated(true);
-          console.log("[AuthContext] User authenticated successfully");
         } catch (error) {
           console.error("[AuthContext] Error parsing user data:", error);
           clearAuthData();
         }
-      } else {
-        console.log("[AuthContext] No token or user data found");
       }
       setLoading(false);
-    };
-
-    const clearAuthData = () => {
-      localStorage.removeItem("devpay_admin_token");
-      localStorage.removeItem("devpay_admin_user");
-      setUser(null);
-      setIsAuthenticated(false);
     };
 
     // Add a small delay to ensure localStorage is accessible
@@ -144,28 +159,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Listen for storage changes (e.g., when user logs in/out in another tab)
     const handleStorageChange = (e: StorageEvent) => {
-      // Only handle storage events from OTHER tabs/windows
-      // Ignore storage events triggered by this window
-      if (e.key === "devpay_admin_token" && e.newValue === null) {
-        console.log("[AuthContext] Token removed in another tab, logging out");
+      if (e.key === ACCESS_TOKEN_KEY && e.newValue === null) {
         clearAuthData();
-      } else if (
-        (e.key === "devpay_admin_token" || e.key === "devpay_admin_user") &&
-        e.newValue
-      ) {
-        console.log(
-          "[AuthContext] Auth data updated in another tab, refreshing",
-        );
+      } else if (e.key === ACCESS_TOKEN_KEY && e.newValue) {
+        // Another tab logged in or refreshed the token
+        setAccessToken(e.newValue);
+        setTimeout(() => {
+          refreshAuth();
+        }, 100);
+      } else if (e.key === USER_KEY && e.newValue) {
         setTimeout(() => {
           refreshAuth();
         }, 100);
       }
     };
 
+    // The API layer refreshed the token in this tab
+    const handleTokenChanged = () => {
+      setAccessToken(localStorage.getItem(ACCESS_TOKEN_KEY));
+    };
+
     // Listen for window focus (helps with Paystack redirect)
     const handleWindowFocus = () => {
-      console.log("[AuthContext] Window focused, checking auth state");
-      const token = localStorage.getItem("devpay_admin_token");
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY);
       if (token && !isAuthenticated) {
         // Only refresh if we have a token but aren't authenticated
         setTimeout(() => {
@@ -175,26 +191,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     window.addEventListener("storage", handleStorageChange);
+    window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, handleTokenChanged);
     window.addEventListener("focus", handleWindowFocus);
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, handleTokenChanged);
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, [refreshAuth, isAuthenticated]);
+  }, [refreshAuth, clearAuthData, buildUserProfile, isAuthenticated]);
 
   const login = async (email: string, password: string) => {
     try {
       const response = await loginMutation({ email, password }).unwrap();
-      console.log("[AuthContext] Login response:", response);
 
       // New login response returns sessionId for OTP verification
       if (response.data && response.data.sessionId) {
         const { sessionId, otpSentTo, expiresAt } = response.data;
-        localStorage.removeItem("devpay_admin_token");
-        localStorage.removeItem("devpay_admin_user");
-        setUser(null);
-        setIsAuthenticated(false);
+        clearAuthData();
         return { sessionId, otpSentTo, expiresAt };
       }
 
@@ -202,10 +216,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error("[AuthContext] Login error:", error);
       // Clear any existing auth data on login failure
-      localStorage.removeItem("devpay_admin_token");
-      localStorage.removeItem("devpay_admin_user");
-      setUser(null);
-      setIsAuthenticated(false);
+      clearAuthData();
       throw error;
     }
   };
@@ -213,56 +224,89 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const verifyLogin = async (sessionId: string, otp: string) => {
     try {
       const response = await verifyLoginMutation({ sessionId, otp }).unwrap();
-      console.log("[AuthContext] Verify login response:", response);
+      const authData = getAuthData(response);
+      const { accessToken: newAccessToken, refreshToken, user: userData } =
+        authData || {};
 
       // Check if password change is required
-      if (
-        response?.data?.requiresPasswordChange ||
-        response?.requiresPasswordChange
-      ) {
+      if (authData?.requiresPasswordChange) {
+        // Keep the tokens so the change-password call is authorized, but don't
+        // mark the user authenticated until the password has been changed
+        if (newAccessToken) {
+          localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
+        }
+        if (refreshToken) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+        }
+        if (userData) {
+          localStorage.setItem(PENDING_USER_KEY, JSON.stringify(userData));
+        }
         return response;
       }
 
-      const accessToken =
-        response?.data?.accessToken ||
-        response?.data?.data?.accessToken ||
-        response?.accessToken;
-      const userData =
-        response?.data?.user || response?.data?.data?.user || response?.user;
-
-      if (accessToken && userData) {
-        localStorage.setItem("devpay_admin_token", accessToken);
-        localStorage.setItem("devpay_admin_user", JSON.stringify(userData));
-
+      if (newAccessToken && userData) {
         const userProfile = buildUserProfile(userData);
         if (!userProfile) {
           throw new Error("Invalid user data from verify-login");
         }
 
+        localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
+        if (refreshToken) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+        }
+        localStorage.setItem(USER_KEY, JSON.stringify(userData));
+
+        setAccessToken(newAccessToken);
         setUser(userProfile);
         setIsAuthenticated(true);
-        console.log("[AuthContext] OTP verified, user authenticated");
         return response;
       }
 
       throw new Error("Invalid response structure - no token or user data");
     } catch (error) {
       console.error("[AuthContext] Verify login error:", error);
-      localStorage.removeItem("devpay_admin_token");
-      localStorage.removeItem("devpay_admin_user");
-      setUser(null);
-      setIsAuthenticated(false);
+      clearAuthData();
       throw error;
     }
   };
 
+  const completePasswordChange = (changePasswordResponse: any) => {
+    // change-password revokes every older token (including our refresh token)
+    // and returns a new pair, so use that rather than calling refresh
+    const userData =
+      localStorage.getItem(PENDING_USER_KEY) || localStorage.getItem(USER_KEY);
+    const userProfile = userData ? buildUserProfile(JSON.parse(userData)) : null;
+
+    if (!userProfile || !storeTokens(getAuthData(changePasswordResponse))) {
+      clearAuthData();
+      return false;
+    }
+
+    localStorage.setItem(USER_KEY, userData as string);
+    localStorage.removeItem(PENDING_USER_KEY);
+    setAccessToken(localStorage.getItem(ACCESS_TOKEN_KEY));
+    setUser(userProfile);
+    setIsAuthenticated(true);
+    return true;
+  };
+
   const logout = async () => {
-    console.log("[AuthContext] Logging out user");
     clearAuthData();
 
     // Optional: redirect to login page
     window.location.href = "/login";
   };
+
+  const permissions = useMemo(() => claims?.permissions ?? [], [claims]);
+  const roles = useMemo(() => claims?.roles ?? [], [claims]);
+  const can = useCallback(
+    (permission: string) => hasPermission(claims, permission),
+    [claims],
+  );
+  const hasRole = useCallback(
+    (...wanted: string[]) => wanted.some((role) => roles.includes(role)),
+    [roles],
+  );
 
   return (
     <AuthContext.Provider
@@ -274,6 +318,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         logout,
         user,
         refreshAuth,
+        completePasswordChange,
+        roles,
+        permissions,
+        passwordChangeRequired: !!claims?.passwordChangeRequired,
+        isSuperAdmin: claimsAreSuperAdmin(claims),
+        can,
+        hasRole,
       }}
     >
       {children}

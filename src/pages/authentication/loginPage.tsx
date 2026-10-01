@@ -3,12 +3,15 @@ import { useNavigate, useLocation } from "react-router-dom";
 import "./LoginPage.css";
 import logoImage from "../../assets/logoIcon.png"; // Adjust the path as necessary
 import { useAuth } from "../../context/AuthContext";
+import { getErrorMessage, takeLoginNotice } from "../../helpers/auth";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // e.g. "Your session has expired" or "Account is deactivated", set when we signed the user out
+  const [notice] = useState<string | null>(() => takeLoginNotice());
   const [isLoading, setIsLoading] = useState(false);
 
   const { login, loading: authLoading } = useAuth();
@@ -38,7 +41,12 @@ const LoginPage: React.FC = () => {
       });
     } catch (error: any) {
       console.error("Login failed:", error);
-      setError("Login failed. Please check your credentials and try again.");
+      setError(
+        getErrorMessage(
+          error,
+          "Login failed. Please check your credentials and try again.",
+        ),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +77,11 @@ const LoginPage: React.FC = () => {
             </p>
 
             <form onSubmit={handleLogin} className="login-form">
-              {error && <div className="error-message">{error}</div>}
+              {error ? (
+                <div className="error-message">{error}</div>
+              ) : (
+                notice && <div className="error-message">{notice}</div>
+              )}
 
               <div className="form-group">
                 <label htmlFor="email">Email</label>

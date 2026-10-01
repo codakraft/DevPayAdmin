@@ -606,3 +606,75 @@
     padding: 10px 0;
   }
 }
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #4D774E;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.field-hint {
+  color: #6B7280;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.roles-matrix {
+  max-width: 900px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.roles-matrix-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.roles-matrix-row:last-child {
+  border-bottom: none;
+}
+
+.roles-matrix-role {
+  width: 180px;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.roles-matrix-permissions {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permission-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: #F3F4F6;
+  color: #374151;
+  font-size: 12px;
+}
+
+.permission-chip.all {
+  background-color: #E8F0E8;
+  color: #3A7145;
+  font-weight: 500;
+}

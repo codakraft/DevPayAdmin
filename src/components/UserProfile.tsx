@@ -1,6 +1,7 @@
 // Example component showing how to access saved user data after login
 import React from "react";
 import { useAuth } from "../context/AuthContext";
+import { formatRoleName } from "../helpers";
 
 const UserProfile: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -49,7 +50,7 @@ const UserProfile: React.FC = () => {
           <strong>Email:</strong> {parsedUserData?.email}
         </p>
         <p>
-          <strong>Role:</strong> {parsedUserData?.role}
+          <strong>Role:</strong> {formatRoleName(parsedUserData?.role)}
         </p>
         <p>
           <strong>ID:</strong> {parsedUserData?.id}

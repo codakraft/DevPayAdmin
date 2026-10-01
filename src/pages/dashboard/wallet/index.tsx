@@ -6,6 +6,7 @@ import {
   useGetWalletTransactionsQuery,
 } from "../../../store/apiSlice";
 import { useAuth } from "../../../context/AuthContext";
+import { Permissions } from "../../../helpers/auth";
 import "./wallet.css";
 
 const Wallet: React.FC = () => {
@@ -13,7 +14,7 @@ const Wallet: React.FC = () => {
   const [fundAmount, setFundAmount] = useState("");
 
   // Get logged-in user information
-  const { user, refreshAuth } = useAuth();
+  const { user, refreshAuth, can } = useAuth();
 
   // Fetch wallet data from API
   const {
@@ -327,17 +328,19 @@ const Wallet: React.FC = () => {
                   Last updated: {new Date(lastUpdated).toLocaleString()}
                 </span>
               </div>
-              <div className="balance-actions">
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={() => setShowFundModal(true)}
-                  className="fund-wallet-btn"
-                >
-                  <span className="btn-icon">💰</span>
-                  Fund Wallet
-                </Button>
-              </div>
+              {can(Permissions.FinanceManage) && (
+                <div className="balance-actions">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => setShowFundModal(true)}
+                    className="fund-wallet-btn"
+                  >
+                    <span className="btn-icon">💰</span>
+                    Fund Wallet
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="balance-visual">
               <div className="wallet-icon">

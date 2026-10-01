@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import "./LoginPage.css";
 import logoImage from "../../assets/logoIcon.png";
 import { useAuth } from "../../context/AuthContext";
+import { getErrorMessage } from "../../helpers/auth";
 
 const LoginOtpPage: React.FC = () => {
   const [otp, setOtp] = useState("");
@@ -77,7 +78,7 @@ const LoginOtpPage: React.FC = () => {
       setShouldRedirect(true);
     } catch (err) {
       console.error("OTP verification failed:", err);
-      setError("OTP verification failed. Please try again.");
+      setError(getErrorMessage(err, "OTP verification failed. Please try again."));
     } finally {
       setIsLoading(false);
     }

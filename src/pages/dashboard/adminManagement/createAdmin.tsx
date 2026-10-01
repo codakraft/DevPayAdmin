@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import "./styless.css";
-import {
-  useGetRolesQuery,
-  useCreateUserMutation,
-} from "../../../store/apiSlice";
+import { useCreateUserMutation } from "../../../store/apiSlice";
 import { useNavigate } from "react-router-dom";
+import { formatRoleName, getPasswordError } from "../../../helpers";
+import { getErrorMessage } from "../../../helpers/auth";
+import useRoleOptions from "./useRoleOptions";
 
 function CreateAdmin() {
   // Form state
@@ -27,43 +27,13 @@ function CreateAdmin() {
 
   // Fetch roles from API
   const {
-    data: rolesResponse,
+    roles,
     isLoading: rolesLoading,
     isError: rolesError,
-  } = useGetRolesQuery();
-  // Map roles to array of { id, name }
-  let roles: { id: string; name: string }[] = [];
-  if (
-    Array.isArray(rolesResponse) &&
-    rolesResponse.length > 0 &&
-    typeof rolesResponse[0] === "object" &&
-    rolesResponse[0] !== null &&
-    "id" in rolesResponse[0] &&
-    "name" in rolesResponse[0]
-  ) {
-    roles = (rolesResponse as any[]).map((r) => ({
-      id: (r as any).id,
-      name: (r as any).name,
-    }));
-  } else if (
-    rolesResponse &&
-    typeof rolesResponse === "object" &&
-    Array.isArray((rolesResponse as any).data) &&
-    (rolesResponse as any).data.length > 0 &&
-    typeof (rolesResponse as any).data[0] === "object" &&
-    "id" in (rolesResponse as any).data[0] &&
-    "name" in (rolesResponse as any).data[0]
-  ) {
-    roles = ((rolesResponse as any).data as any[]).map((r) => ({
-      id: r.id,
-      name: r.name,
-    }));
-  }
+  } = useRoleOptions({ assignableOnly: true });
   const [createUser, { isLoading: creatingUser }] = useCreateUserMutation();
 
   const navigate = useNavigate();
-
-  console.log("Roles data:", roles);
 
   // Form submission state
   const [submitting, setSubmitting] = useState(false);
@@ -123,6 +93,9 @@ function CreateAdmin() {
     if (!formData.password.trim()) {
       newErrors.password = "Password is required";
       valid = false;
+    } else if (getPasswordError(formData.password)) {
+      newErrors.password = getPasswordError(formData.password);
+      valid = false;
     }
 
     // Validate role
@@ -144,14 +117,14 @@ function CreateAdmin() {
         await createUser(formData).unwrap();
         setSubmitSuccess(true);
         setSubmitting(false);
-        navigate("/dashboard/adminManagement");
+        navigate("/admin-management");
         // Optionally reset form
         // setFormData({ firstName: "", lastName: "", email: "", password: "", role: "" });
       } catch (error: any) {
         setSubmitting(false);
         setSubmitSuccess(false);
         // Optionally handle error
-        alert(error?.data?.message || "Failed to create admin");
+        alert(getErrorMessage(error, "Failed to create admin"));
       }
     }
   };
@@ -159,6 +132,13 @@ function CreateAdmin() {
   return (
     <>
       <div className="page-header">
+        <button
+          type="button"
+          className="back-link"
+          onClick={() => navigate("/admin-management")}
+        >
+          ← Back to Admin Management
+        </button>
         <h1>Create Admin</h1>
         <p className="subtitle">Manage admins and set their access level.</p>
       </div>
@@ -233,8 +213,13 @@ function CreateAdmin() {
                 onChange={handleInputChange}
                 className={errors.password ? "input-error" : ""}
               />
-              {errors.password && (
+              {errors.password ? (
                 <div className="error-message">{errors.password}</div>
+              ) : (
+                <div className="field-hint">
+                  At least 8 characters, with an uppercase letter, a lowercase
+                  letter, a number and a special character.
+                </div>
               )}
             </div>
 
@@ -255,7 +240,7 @@ function CreateAdmin() {
                 </option>
                 {roles.map((role) => (
                   <option key={role.id} value={role.name}>
-                    {role.name}
+                    {formatRoleName(role.name)}
                   </option>
                 ))}
               </select>

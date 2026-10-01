@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./productTable.module.css";
+import { useAuth } from "../../../context/AuthContext";
+import { Permissions } from "../../../helpers/auth";
 
 const dummyData = [
   {
@@ -55,6 +57,8 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [tableData, setTableData] = useState(dummyData);
   const navigate = useNavigate();
+  const { can } = useAuth();
+  const canManageProducts = can(Permissions.ProductsManage);
 
   console.log("dataloan", data);
 
@@ -216,46 +220,50 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
                     >
                       View
                     </button>
-                    <button
-                      style={{
-                        display: "block",
-                        width: "100%",
-                        padding: "10px 16px",
-                        background: "none",
-                        border: "none",
-                        textAlign: "left",
-                        cursor: "pointer",
-                        fontSize: 14,
-                      }}
-                      onClick={() => {
-                        setMenuOpenId(null);
-                        navigate(`/content-management/edit/${row.id}`, {
-                          state: { product: row },
-                        });
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      style={{
-                        display: "block",
-                        width: "100%",
-                        padding: "10px 16px",
-                        background: "none",
-                        border: "none",
-                        textAlign: "left",
-                        cursor: "pointer",
-                        fontSize: 14,
-                        color: "#d32f2f",
-                      }}
-                      onClick={() => {
-                        setMenuOpenId(null);
-                        // handle disable logic here
-                        alert(`Disable ${row.id}`);
-                      }}
-                    >
-                      Disable
-                    </button>
+                    {canManageProducts && (
+                      <>
+                        <button
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            padding: "10px 16px",
+                            background: "none",
+                            border: "none",
+                            textAlign: "left",
+                            cursor: "pointer",
+                            fontSize: 14,
+                          }}
+                          onClick={() => {
+                            setMenuOpenId(null);
+                            navigate(`/content-management/edit/${row.id}`, {
+                              state: { product: row },
+                            });
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            padding: "10px 16px",
+                            background: "none",
+                            border: "none",
+                            textAlign: "left",
+                            cursor: "pointer",
+                            fontSize: 14,
+                            color: "#d32f2f",
+                          }}
+                          onClick={() => {
+                            setMenuOpenId(null);
+                            // handle disable logic here
+                            alert(`Disable ${row.id}`);
+                          }}
+                        >
+                          Disable
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

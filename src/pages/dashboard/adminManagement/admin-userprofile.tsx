@@ -1,52 +1,99 @@
 import React, { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Button from "../../../ui/components/button/button";
 import "./admin-userprofile.css";
+import "./styless.css";
+import { formatDate, formatRoleName, formatUserRoles } from "../../../helpers";
+import { useGetAdminUserQuery } from "../../../store/apiSlice";
+import { AdminUser } from "../../../types/types";
+import useAdminUserActions from "./useAdminUserActions";
 
-interface AdminUserProfileProps {}
-
-const AdminUserProfile: React.FC<AdminUserProfileProps> = () => {
+const AdminUserProfile: React.FC = () => {
   const location = useLocation();
-  const user = location.state?.user;
+  const navigate = useNavigate();
+  const stateUser: AdminUser | undefined = location.state?.user;
+
+  // There's no get-by-id endpoint, so re-read the user from the list by email.
+  // This keeps the page current after a role or status change.
+  const { data } = useGetAdminUserQuery(
+    { Search: stateUser?.email, PageSize: 50 },
+    { skip: !stateUser }
+  );
+  const user =
+    data?.data?.users?.find((u) => u.id === stateUser?.id) ?? stateUser;
+
+  const { assignableRoles, busyUserId, canManageUser, changeRole, setActive } =
+    useAdminUserActions();
+
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: user?.fullName || "Adedamola, Agunbiade",
-    email: user?.email || "damola@gmail.com",
-    role: user?.role || "Admin Role",
-    branch: user?.branch || "Head Office",
-    phone: user?.phoneNumber || "070123456789",
-    gender: user?.gender || "Male",
-    status: user?.status || "Active",
-  });
+  const [roleId, setRoleId] = useState("");
+  const [isActive, setIsActive] = useState(true);
 
-  const handleDeactivate = () => {
-    console.log("Deactivate admin");
+  const backLink = (
+    <button
+      type="button"
+      className="back-link"
+      onClick={() => navigate("/admin-management")}
+    >
+      ← Back to Admin Management
+    </button>
+  );
+
+  // Opened directly by URL: the user isn't passed in and can't be fetched by id
+  if (!user) {
+    return (
+      <div className="page-header">
+        {backLink}
+        <h1>Admin User Profile</h1>
+        <p className="subtitle">
+          Admin not found. Open them from the{" "}
+          <Link to="/admin-management">Admin Management</Link> table.
+        </p>
+      </div>
+    );
+  }
+
+  const isBusy = busyUserId === user.id;
+  const canEdit = canManageUser(user);
+  const currentRoleIds = (user.roles ?? []).map((r) => r.id);
+  const initials = user.fullName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+
+  const startEditing = () => {
+    // Preselect the current role when the user has exactly one we can assign
+    const current = assignableRoles.filter(
+      (r) => currentRoleIds.includes(r.id) || r.name === user.role
+    );
+    setRoleId(current.length === 1 ? current[0].id : "");
+    setIsActive(user.isActive);
+    setIsEditing(true);
   };
 
-  const handleDisable = () => {
-    console.log("Disable admin");
-  };
+  const roleChanged =
+    !!roleId &&
+    !(
+      currentRoleIds.length <= 1 &&
+      (currentRoleIds.includes(roleId) ||
+        assignableRoles.find((r) => r.id === roleId)?.name === user.role)
+    );
+  const statusChanged = isActive !== user.isActive;
 
-  const handleEdit = () => {
-    setIsEditing(!isEditing);
-  };
-
-  const handleUpdate = () => {
-    console.log("Update admin data:", formData);
+  const handleUpdate = async () => {
+    if (roleChanged && !(await changeRole(user, roleId))) return;
+    if (statusChanged && !(await setActive(user, isActive))) return;
     setIsEditing(false);
-    // Add API call to update admin data here
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  const handleToggleActive = () => setActive(user, !user.isActive);
 
   return (
     <>
       <div className="page-header">
+        {backLink}
         <h1>Admin User Profile</h1>
         <p className="subtitle">Manage administrator details and permissions</p>
       </div>
@@ -55,28 +102,19 @@ const AdminUserProfile: React.FC<AdminUserProfileProps> = () => {
         <div className="profile-card">
           <div className="profile-avatar">
             <div className="avatar-circle">
-              <span className="avatar-initials">AA</span>
+              <span className="avatar-initials">{initials}</span>
             </div>
           </div>
 
           <div className="profile-details">
             <div className="detail-row">
               <span className="detail-label">Name</span>
-              {isEditing ? (
-                <input
-                  type="text"
-                  className="detail-input"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                />
-              ) : (
-                <span className="detail-value">{formData.name}</span>
-              )}
+              <span className="detail-value">{user.fullName}</span>
             </div>
 
             <div className="detail-row">
               <span className="detail-label">Email</span>
-              <span className="detail-value">{formData.email}</span>
+              <span className="detail-value">{user.email}</span>
             </div>
 
             <div className="detail-row">
@@ -84,61 +122,29 @@ const AdminUserProfile: React.FC<AdminUserProfileProps> = () => {
               {isEditing ? (
                 <select
                   className="detail-input"
-                  value={formData.role}
-                  onChange={(e) => handleInputChange("role", e.target.value)}
+                  value={roleId}
+                  onChange={(e) => setRoleId(e.target.value)}
+                  disabled={isBusy}
                 >
-                  <option value="Admin Role">Admin Role</option>
-                  <option value="Super Admin">Super Admin</option>
-                  <option value="Manager">Manager</option>
+                  <option value="">
+                    {currentRoleIds.length > 1
+                      ? `Keep current (${formatUserRoles(user)})`
+                      : "Select a role"}
+                  </option>
+                  {assignableRoles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {formatRoleName(role.name)}
+                    </option>
+                  ))}
                 </select>
               ) : (
-                <span className="detail-value">{formData.role}</span>
+                <span className="detail-value">{formatUserRoles(user)}</span>
               )}
             </div>
 
             <div className="detail-row">
-              <span className="detail-label">Branch</span>
-              {isEditing ? (
-                <input
-                  type="text"
-                  className="detail-input"
-                  value={formData.branch}
-                  onChange={(e) => handleInputChange("branch", e.target.value)}
-                />
-              ) : (
-                <span className="detail-value">{formData.branch}</span>
-              )}
-            </div>
-
-            <div className="detail-row">
-              <span className="detail-label">Phone No.</span>
-              {isEditing ? (
-                <input
-                  type="text"
-                  className="detail-input"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                />
-              ) : (
-                <span className="detail-value">{formData.phone}</span>
-              )}
-            </div>
-
-            <div className="detail-row">
-              <span className="detail-label">Gender</span>
-              {isEditing ? (
-                <select
-                  className="detail-input"
-                  value={formData.gender}
-                  onChange={(e) => handleInputChange("gender", e.target.value)}
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              ) : (
-                <span className="detail-value">{formData.gender}</span>
-              )}
+              <span className="detail-label">Date Created</span>
+              <span className="detail-value">{formatDate(user.createdAt)}</span>
             </div>
 
             <div className="detail-row">
@@ -146,50 +152,63 @@ const AdminUserProfile: React.FC<AdminUserProfileProps> = () => {
               {isEditing ? (
                 <select
                   className="detail-input"
-                  value={formData.status}
-                  onChange={(e) => handleInputChange("status", e.target.value)}
+                  value={isActive ? "active" : "inactive"}
+                  onChange={(e) => setIsActive(e.target.value === "active")}
+                  disabled={isBusy}
                 >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Deactivated</option>
                 </select>
               ) : (
-                <span
-                  className={`detail-value ${
-                    formData.status.toLowerCase() === "active"
-                      ? "status-active"
-                      : ""
-                  }`}
-                >
-                  {formData.status}
+                <span className="detail-value">
+                  <span
+                    className={user.isActive ? "status-active" : "status-inactive"}
+                  >
+                    {user.isActive ? "Active" : "Deactivated"}
+                  </span>
                 </span>
               )}
             </div>
           </div>
 
-          <div className="profile-actions">
-            {isEditing ? (
-              <>
-                <Button variant="outline" size="md" onClick={handleEdit}>
-                  Cancel
-                </Button>
-                <Button variant="primary" size="md" onClick={handleUpdate}>
-                  Update
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" size="md" onClick={handleEdit}>
-                  Edit
-                </Button>
-                <Button variant="danger" size="md" onClick={handleDisable}>
-                  Disable
-                </Button>
-                <Button variant="danger" size="md" onClick={handleDeactivate}>
-                  Deactivate
-                </Button>
-              </>
-            )}
-          </div>
+          {canEdit && (
+            <div className="profile-actions">
+              {isEditing ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onClick={() => setIsEditing(false)}
+                    disabled={isBusy}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={handleUpdate}
+                    disabled={isBusy || (!roleChanged && !statusChanged)}
+                  >
+                    {isBusy ? "Saving..." : "Update"}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="md" onClick={startEditing}>
+                    Edit
+                  </Button>
+                  <Button
+                    variant={user.isActive ? "danger" : "primary"}
+                    size="md"
+                    onClick={handleToggleActive}
+                    disabled={isBusy}
+                  >
+                    {user.isActive ? "Deactivate" : "Activate"}
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </>

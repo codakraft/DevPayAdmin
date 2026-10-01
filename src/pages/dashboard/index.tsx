@@ -8,6 +8,8 @@ import {
   useLazyGetCompanyDashboardQuery,
 } from "../../store/apiSlice";
 import { DashboardDataAnalytics } from "../../types/types";
+import { useAuth } from "../../context/AuthContext";
+import { Permissions } from "../../helpers/auth";
 
 const formatCurrency = (value: number | string | undefined): string => {
   if (!value) return "₦0.00";
@@ -31,6 +33,8 @@ const Dashboard: React.FC = () => {
 
   const [getCompanyDashboard, { isLoading }] =
     useLazyGetCompanyDashboardQuery();
+  const { can } = useAuth();
+  const canViewDashboard = can(Permissions.CompanyView);
 
   // console.log("Dashboard loaded", dashboardData);
 
@@ -50,10 +54,18 @@ const Dashboard: React.FC = () => {
   }, [getCompanyDashboard, activeTimeFilter, customStartDate, customEndDate]);
 
   useEffect(() => {
+    // company/dashboard needs company.view; calling it without would just 403
+    if (!canViewDashboard) return;
     if (activeTimeFilter === "custom" && (!customStartDate || !customEndDate))
       return;
     getDashboard();
-  }, [getDashboard, activeTimeFilter, customStartDate, customEndDate]);
+  }, [
+    canViewDashboard,
+    getDashboard,
+    activeTimeFilter,
+    customStartDate,
+    customEndDate,
+  ]);
 
   // Define different stat values based on time filter
   const statsData = useMemo(() => {
@@ -87,6 +99,17 @@ const Dashboard: React.FC = () => {
 
   // Get current stats based on time filter
   const currentStats = statsData[activeTimeFilter];
+
+  if (!canViewDashboard) {
+    return (
+      <div className="page-header">
+        <h1>Dashboard</h1>
+        <p className="subtitle">
+          Welcome. Use the menu to get to the areas you have access to.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading || !dashboardData) {
     return (
