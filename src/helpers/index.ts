@@ -30,13 +30,66 @@ export const formatCurrency = (amount: number, currency: string = '₦'): string
  * @param date - Date string or Date object
  * @returns Formatted date string
  */
-export const formatDate = (date: string | Date): string => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+export const formatDate = (date: string | Date | null | undefined): string => {
+  if (!date) return '-';
+  // Backend timestamps can carry 7 fractional digits (e.g. 2026-03-09T19:43:08.5413631),
+  // which not every browser parses — trim to milliseconds first.
+  const dateObj =
+    typeof date === 'string'
+      ? new Date(date.replace(/(\.\d{3})\d+/, '$1'))
+      : date;
+  if (isNaN(dateObj.getTime())) return '-';
   return dateObj.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
   });
+};
+
+/**
+ * Utility function to make role names readable
+ * @param role - Role name from the API (e.g. LoanOfficer, SUPER_ADMIN)
+ * @returns Role name with spaces between words (e.g. Loan Officer)
+ */
+export const formatRoleName = (role: string | null | undefined): string => {
+  if (!role) return '';
+  return role
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+/**
+ * Readable list of a user's roles
+ * @param user - User with `roles` (all roles) and/or `role` (first role only)
+ * @returns e.g. "Loan Officer, Auditor"
+ */
+export const formatUserRoles = (user: {
+  role?: string | null;
+  roles?: { name: string }[];
+}): string => {
+  const names = user.roles?.length
+    ? user.roles.map((r) => r.name)
+    : user.role
+    ? [user.role]
+    : [];
+  return names.map(formatRoleName).join(', ');
+};
+
+/**
+ * Validates admin password strength
+ * @param password - Password to check
+ * @returns Error message, or empty string when the password is valid
+ */
+export const getPasswordError = (password: string): string => {
+  if (password.length < 8) return 'Password must be at least 8 characters';
+  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
+  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
+  if (!/\d/.test(password)) return 'Password must contain at least one number';
+  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain at least one special character';
+  return '';
 };
 
 /**

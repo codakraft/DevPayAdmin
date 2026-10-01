@@ -5,6 +5,8 @@ import {
   useDisburseLoanMutation,
 } from "../../../store/apiSlice";
 import "./disbursements.css";
+import { useAuth } from "../../../context/AuthContext";
+import { Permissions, getErrorMessage } from "../../../helpers/auth";
 
 interface LoanDetails {
   id: string;
@@ -32,6 +34,7 @@ const DisbursementDetails: React.FC = () => {
   const [getLoanDetails, { data: loanData, isLoading, error }] =
     useLazyGetLoansByIDQuery();
   const [disburseLoan, { isLoading: isDisbursing }] = useDisburseLoanMutation();
+  const { can } = useAuth();
   const [loan, setLoan] = useState<LoanDetails | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -114,7 +117,7 @@ const DisbursementDetails: React.FC = () => {
     } catch (error: any) {
       console.error("Failed to disburse loan:", error);
       setErrorMessage(
-        error.data?.message || "An error occurred while disbursing the loan",
+        getErrorMessage(error, "An error occurred while disbursing the loan"),
       );
       setShowErrorModal(true);
     }
@@ -294,7 +297,8 @@ const DisbursementDetails: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        {(loan.status === 9 || loan.status === 2) && (
+        {can(Permissions.LoansDisburse) &&
+          (loan.status === 9 || loan.status === 2) && (
           <div className="action-buttons">
             <button
               className="disburse-btn"

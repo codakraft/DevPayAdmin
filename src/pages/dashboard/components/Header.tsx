@@ -1,6 +1,5 @@
 import React from "react";
 import "./Header.css";
-import search from "../../../assets/search.svg";
 
 interface HeaderProps {
   username: string;
@@ -9,11 +8,6 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ username }) => {
   return (
     <header className="header">
-      <div className="search-bar">
-        <img src={search} alt="Search" className="search-icon" />
-        <input type="text" placeholder="Type to search" />
-      </div>
-
       <div className="header-actions">
         <div className="notification">
           <span className="icon">🔔</span>

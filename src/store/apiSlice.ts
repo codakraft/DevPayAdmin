@@ -1,24 +1,150 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import {
+  createApi,
+  fetchBaseQuery,
+  BaseQueryFn,
+  FetchArgs,
+  FetchBaseQueryError,
+} from "@reduxjs/toolkit/query/react";
 import { API_BASE_URL } from "../config/environment";
-import { AdminUserResponse, CompanyDashboardResponse, CreateLoanData, WalletResponse, FundWalletRequestData, FundWalletResponse, CompleteFundWalletRequestData, CompleteFundWalletResponse, WalletTransactionsResponse, WalletTransactionsRequest } from "../types/types";
+import { AdminUserQueryParams, AdminUserResponse, CompanyDashboardResponse, CreateLoanData, RoleOption, WalletResponse, FundWalletRequestData, FundWalletResponse, CompleteFundWalletRequestData, CompleteFundWalletResponse, WalletTransactionsResponse, WalletTransactionsRequest } from "../types/types";
+import {
+  ACCESS_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  AUTH_TOKEN_CHANGED_EVENT,
+  ErrorCodes,
+  clearStoredAuth,
+  getErrorCode,
+  setLoginNotice,
+} from "../helpers/auth";
+
+const rawBaseQuery = fetchBaseQuery({
+  baseUrl: API_BASE_URL,
+  prepareHeaders: (headers) => {
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    return headers;
+  },
+});
+
+// A 401 from these means bad credentials or a dead session, not an expired token
+const NO_REFRESH_URLS = [
+  "admin/login",
+  "admin/verify-login",
+  "admin/refresh",
+  "admin/logout",
+];
+
+// Saves a token pair from refresh or change-password and tells AuthContext
+export const storeTokens = (data: any): boolean => {
+  if (!data?.accessToken || !data?.refreshToken) return false;
+  localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
+  // Refresh tokens are single-use: always keep the new one
+  localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+  window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
+  return true;
+};
+
+interface RefreshResult {
+  ok: boolean;
+  message?: string;
+  networkError?: boolean;
+}
+
+const requestRefresh = async (): Promise<RefreshResult> => {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) return { ok: false };
+  const accessTokenBefore = localStorage.getItem(ACCESS_TOKEN_KEY);
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL.replace(/\/?$/, "/")}admin/refresh`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      }
+    );
+    const body = await response.json().catch(() => null);
+    const data = body?.data;
+    if (response.ok && storeTokens(data)) {
+      return { ok: true };
+    }
+    // Another tab may have spent the same refresh token first and stored new tokens
+    const accessTokenNow = localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (accessTokenNow && accessTokenNow !== accessTokenBefore) {
+      return { ok: true };
+    }
+    return { ok: false, message: body?.message };
+  } catch {
+    return { ok: false, networkError: true };
+  }
+};
+
+let refreshPromise: Promise<RefreshResult> | null = null;
+
+// Concurrent callers share one refresh call, since a second one would fail
+export const refreshSession = (): Promise<RefreshResult> => {
+  refreshPromise ??= requestRefresh().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
+};
+
+const signOut = (notice: string) => {
+  clearStoredAuth();
+  setLoginNotice(notice);
+  if (!["/login", "/login-otp"].includes(window.location.pathname)) {
+    window.location.href = "/login";
+  }
+};
+
+const baseQueryWithReauth: BaseQueryFn<
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError
+> = async (args, api, extraOptions) => {
+  const url = typeof args === "string" ? args : args.url;
+  const tokenUsed = localStorage.getItem(ACCESS_TOKEN_KEY);
+  let result = await rawBaseQuery(args, api, extraOptions);
+
+  if (
+    result.error?.status === 401 &&
+    !NO_REFRESH_URLS.some((path) => url.startsWith(path))
+  ) {
+    // Another request or tab may already have refreshed while this one was in flight
+    const currentToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const refresh =
+      currentToken && currentToken !== tokenUsed
+        ? { ok: true }
+        : await refreshSession();
+
+    if (refresh.ok) {
+      result = await rawBaseQuery(args, api, extraOptions); // retry once
+    } else if (!refresh.networkError) {
+      signOut(
+        (refresh as RefreshResult).message ||
+          "Your session has expired. Please sign in again."
+      );
+    }
+  }
+
+  if (
+    result.error?.status === 403 &&
+    getErrorCode(result.error) === ErrorCodes.PasswordChangeRequired &&
+    window.location.pathname !== "/change-password"
+  ) {
+    window.location.href = "/change-password";
+  }
+
+  return result;
+};
 
 export const apiSlice = createApi({
   reducerPath: "api",
-  baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE_URL,
-    prepareHeaders: (headers) => {
-      const token = localStorage.getItem("devpay_admin_token");
-      console.log("[apiSlice] devpay_admin_token:", token);
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
-        console.log("[apiSlice] Authorization header set:", headers.get("Authorization"));
-      } else {
-        console.log("[apiSlice] No token found, Authorization header not set.");
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
+  tagTypes: ["AdminUsers"],
   endpoints: (builder) => ({
+        // Returns a fresh token pair in `data`; every older token is revoked
         changePassword: builder.mutation<any, {
           currentPassword: string;
           newPassword: string;
@@ -77,11 +203,41 @@ export const apiSlice = createApi({
         body,
       }),
     }),
-    getRoles: builder.query<string[], void>({
+    getRoles: builder.query<{ success: boolean; message: string; data: RoleOption[] }, void>({
       query: () => ({
         url: `admin/roles`,
         method: "GET",
       }),
+    }),
+    assignRole: builder.mutation<any, { userId: string; roleId: string }>({
+      query: (body) => ({
+        url: `admin/role/assign`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["AdminUsers"],
+    }),
+    removeRole: builder.mutation<any, { userId: string; roleId: string }>({
+      query: (body) => ({
+        url: `admin/role/remove`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["AdminUsers"],
+    }),
+    activateUser: builder.mutation<any, { userId: string }>({
+      query: ({ userId }) => ({
+        url: `admin/users/${userId}/activate`,
+        method: "POST",
+      }),
+      invalidatesTags: ["AdminUsers"],
+    }),
+    deactivateUser: builder.mutation<any, { userId: string }>({
+      query: ({ userId }) => ({
+        url: `admin/users/${userId}/deactivate`,
+        method: "POST",
+      }),
+      invalidatesTags: ["AdminUsers"],
     }),
     createUser: builder.mutation<any, {
       firstName: string;
@@ -96,6 +252,7 @@ export const apiSlice = createApi({
         method: "POST",
         body,
       }),
+      invalidatesTags: ["AdminUsers"],
     }),
     getLoans: builder.query<any, {status?: number | number[]}>({
       query: ({status}) => {
@@ -120,11 +277,13 @@ export const apiSlice = createApi({
         method: "GET",
       }),
     }),
-    getAdminUser: builder.query<AdminUserResponse, void>({
-      query: () => ({
+    getAdminUser: builder.query<AdminUserResponse, AdminUserQueryParams | void>({
+      query: (params) => ({
         url: `company/users`,
         method: "GET",
+        params: params || undefined,
       }),
+      providesTags: ["AdminUsers"],
     }),
     approveLoan: builder.mutation<any, { reason: string; id: string; }>({
       query: ({ reason, id }) => ({
@@ -207,6 +366,7 @@ export const {
   useLazyGetLoansQuery,
   useLazyGetCompanyDashboardQuery,
   useGetAdminUserQuery,
+  useLazyGetAdminUserQuery,
   useLazyGetCompayLoansQuery,
   useApproveLoanMutation,
   useRejectLoanMutation,
@@ -222,4 +382,8 @@ export const {
   useGetRolesQuery,
   useCreateUserMutation,
   useChangePasswordMutation,
+  useAssignRoleMutation,
+  useRemoveRoleMutation,
+  useActivateUserMutation,
+  useDeactivateUserMutation,
 } = apiSlice;

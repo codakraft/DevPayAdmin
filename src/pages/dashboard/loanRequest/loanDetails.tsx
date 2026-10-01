@@ -7,6 +7,8 @@ import {
   useRejectLoanMutation,
   useLazyGetLoansByIDQuery,
 } from "../../../store/apiSlice";
+import { useAuth } from "../../../context/AuthContext";
+import { Permissions, getErrorMessage } from "../../../helpers/auth";
 
 // SuccessModal component
 const SuccessModal: React.FC<{
@@ -58,6 +60,7 @@ const LoanDetails = () => {
   const [approveLoan, { isLoading: approveLoading }] = useApproveLoanMutation();
   const [rejectLoan, { isLoading: rejectLoading }] = useRejectLoanMutation();
   const [getLoanById, { isLoading }] = useLazyGetLoansByIDQuery();
+  const { can } = useAuth();
 
   useEffect(() => {
     const fetchLoanDetails = async () => {
@@ -132,6 +135,7 @@ const LoanDetails = () => {
       }
     } catch (error) {
       console.error("Error processing loan action:", error);
+      alert(getErrorMessage(error, "Failed to process the loan. Please try again."));
     } finally {
       setIsProcessing(false);
     }
@@ -152,6 +156,7 @@ const LoanDetails = () => {
       }
     } catch (error) {
       console.error("Error processing loan action:", error);
+      alert(getErrorMessage(error, "Failed to process the loan. Please try again."));
     } finally {
       setIsProcessing(false);
     }
@@ -239,14 +244,16 @@ const LoanDetails = () => {
             </p>
           </div>
         </div>
-        <div className="header-actions">
-          <Button variant="danger" size="md" onClick={handleReject}>
-            Reject
-          </Button>
-          <Button variant="primary" size="md" onClick={handleApprove}>
-            Approve
-          </Button>
-        </div>
+        {can(Permissions.LoansApprove) && (
+          <div className="header-actions">
+            <Button variant="danger" size="md" onClick={handleReject}>
+              Reject
+            </Button>
+            <Button variant="primary" size="md" onClick={handleApprove}>
+              Approve
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="loan-content">

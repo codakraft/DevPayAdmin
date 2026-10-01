@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const ProtectedRoute: React.FC = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, passwordChangeRequired } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking authentication
@@ -41,6 +41,11 @@ const ProtectedRoute: React.FC = () => {
     // Always redirect to login for unauthenticated users
     // Save the attempted location for redirect after login
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  // The API blocks everything until the password is changed, so don't load the app
+  if (passwordChangeRequired) {
+    return <Navigate to="/change-password" replace />;
   }
 
   // If authenticated, render the child routes

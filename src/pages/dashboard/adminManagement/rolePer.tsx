@@ -1,246 +1,79 @@
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 import "./styless.css";
+import { Permissions } from "../../../helpers/auth";
+import { formatRoleName } from "../../../helpers";
+import useRoleOptions from "./useRoleOptions";
 
-interface Permissions {
-  allPermission: boolean;
-  businessOperation: boolean;
-  auditAccess: boolean;
-  createAdmin: boolean;
-  deleteUser: boolean;
-  sendBroadcast: boolean;
-}
+const ALL_PERMISSIONS: string[] = Object.values(Permissions);
 
-interface FormData {
-  roleName: string;
-  permissions: Permissions;
-}
+// "loans.approve" -> "Loans: Approve"
+const formatPermission = (permission: string) =>
+  permission
+    .split(".")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(": ");
 
-interface FormErrors {
-  roleName: string;
-}
+// Roles and permissions are read from admin/roles, the same table the backend
+// authorizes against. They can't be edited from here.
+function RolesPermissions() {
+  const navigate = useNavigate();
+  const { allRoles, isLoading, isError } = useRoleOptions();
 
-function CreateRoles() {
-  const [formData, setFormData] = useState<FormData>({
-    roleName: "",
-    permissions: {
-      allPermission: false,
-      businessOperation: false,
-      auditAccess: false,
-      createAdmin: false,
-      deleteUser: false,
-      sendBroadcast: false,
-    },
-  });
-
-  const [errors, setErrors] = useState<FormErrors>({
-    roleName: "",
-  });
-
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-
-    // Clear error when user types
-    if (errors[name as keyof FormErrors]) {
-      setErrors({
-        ...errors,
-        [name]: "",
-      } as FormErrors);
+  const renderPermissions = (permissions: string[]) => {
+    if (ALL_PERMISSIONS.every((p) => permissions.includes(p))) {
+      return <span className="permission-chip all">All permissions</span>;
     }
+    if (permissions.length === 0) {
+      return <span className="permission-chip">No permissions</span>;
+    }
+    return permissions.map((permission) => (
+      <span className="permission-chip" key={permission}>
+        {formatPermission(permission)}
+      </span>
+    ));
   };
 
-  const handleCheckboxChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-
-    // If "All Permission" is checked, check all other permissions
-    if (name === "allPermission") {
-      setFormData({
-        ...formData,
-        permissions: {
-          allPermission: checked,
-          businessOperation: checked,
-          auditAccess: checked,
-          createAdmin: checked,
-          deleteUser: checked,
-          sendBroadcast: checked,
-        },
-      });
-    } else {
-      // Update only the specific permission
-      setFormData({
-        ...formData,
-        permissions: {
-          ...formData.permissions,
-          [name]: checked,
-          // If any permission is unchecked, "All Permission" should be unchecked too
-          allPermission:
-            name !== "allPermission" && checked
-              ? formData.permissions.businessOperation &&
-                formData.permissions.auditAccess &&
-                formData.permissions.createAdmin &&
-                formData.permissions.deleteUser &&
-                formData.permissions.sendBroadcast
-              : false,
-        },
-      });
+  const renderRoles = () => {
+    if (isLoading) return <p className="page-subtitle">Loading roles...</p>;
+    if (isError) {
+      return <div className="error-message">Failed to load roles.</div>;
     }
-  };
-
-  const validateForm = () => {
-    const newErrors: Partial<FormErrors> = {};
-    let isValid = true;
-
-    if (!formData.roleName.trim()) {
-      newErrors.roleName = "Role name is required";
-      isValid = false;
-    }
-
-    setErrors(newErrors as FormErrors);
-    return isValid;
-  };
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      // Here you would typically send the data to an API
-      console.log("Form data submitted:", formData);
-      // Reset form or show success message
-    }
+    return (
+      <div className="roles-matrix">
+        {allRoles.map(({ id, name, permissions = [] }) => (
+          <div className="roles-matrix-row" key={id}>
+            <div className="roles-matrix-role">{formatRoleName(name)}</div>
+            <div className="roles-matrix-permissions">
+              {renderPermissions(permissions)}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
     <div className="role-management-page">
       <div className="page-header">
-        <h1>Create Role</h1>
+        <button
+          type="button"
+          className="back-link"
+          onClick={() => navigate("/admin-management")}
+        >
+          ← Back to Admin Management
+        </button>
+        <h1>Roles & Permissions</h1>
         <p className="page-subtitle">
-          Create permission settings for each role
+          What each role can do. Roles are managed by the platform and can't be
+          edited here. Assign a role to an admin from the Admin Management
+          table.
         </p>
       </div>
 
-      <div className="form-container">
-        <form className="role-form" onSubmit={handleSubmit}>
-          {/* Role Name Field */}
-          <div className="form-group">
-            <label htmlFor="roleName">
-              Role Name <span className="required-field">*</span>
-            </label>
-            <input
-              type="text"
-              id="roleName"
-              name="roleName"
-              value={formData.roleName}
-              onChange={handleInputChange}
-              placeholder="e.g. Super Admin"
-              className={errors.roleName ? "error-input" : ""}
-            />
-            {errors.roleName && (
-              <div className="error-message">{errors.roleName}</div>
-            )}
-          </div>
-
-          {/* Permissions Section */}
-          <div className="permissions-section">
-            <h3 className="section-heading">Permissions</h3>
-
-            <div className="permission-list">
-              {/* All Permission */}
-              <div className="permission-item">
-                <div className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    id="allPermission"
-                    name="allPermission"
-                    checked={formData.permissions.allPermission}
-                    onChange={handleCheckboxChange}
-                  />
-                  <label htmlFor="allPermission">All Permission</label>
-                </div>
-              </div>
-
-              {/* General Access */}
-              <div className="permission-item">
-                <div className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    id="generalAccess"
-                    name="generalAccess"
-                    checked={formData.permissions.businessOperation}
-                    onChange={handleCheckboxChange}
-                  />
-                  <label htmlFor="generalAccess">Business Operation</label>
-                </div>
-              </div>
-
-              {/* Edit Access */}
-              <div className="permission-item">
-                <div className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    id="editAccess"
-                    name="editAccess"
-                    checked={formData.permissions.auditAccess}
-                    onChange={handleCheckboxChange}
-                  />
-                  <label htmlFor="editAccess">Audit Access</label>
-                </div>
-              </div>
-
-              {/* Create Admin */}
-              <div className="permission-item">
-                <div className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    id="createAdmin"
-                    name="createAdmin"
-                    checked={formData.permissions.createAdmin}
-                    onChange={handleCheckboxChange}
-                  />
-                  <label htmlFor="createAdmin">Create Admin</label>
-                </div>
-              </div>
-
-              {/* Delete User */}
-              <div className="permission-item">
-                <div className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    id="deleteUser"
-                    name="deleteUser"
-                    checked={formData.permissions.deleteUser}
-                    onChange={handleCheckboxChange}
-                  />
-                  <label htmlFor="deleteUser">Delete User</label>
-                </div>
-              </div>
-
-              {/* Send Broadcast */}
-              <div className="permission-item">
-                <div className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    id="sendBroadcast"
-                    name="sendBroadcast"
-                    checked={formData.permissions.sendBroadcast}
-                    onChange={handleCheckboxChange}
-                  />
-                  <label htmlFor="sendBroadcast">Send Broadcast</label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Save Button */}
-          <button type="submit" className="save-button">
-            Save
-          </button>
-        </form>
-      </div>
+      {renderRoles()}
     </div>
   );
 }
 
-export default CreateRoles;
+export default RolesPermissions;

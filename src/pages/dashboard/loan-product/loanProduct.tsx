@@ -6,11 +6,14 @@ import styles from "../adsManagement/createAdd.module.css";
 import LoanTable from "./product-table";
 import { useLazyGetLoanProductQuery } from "../../../store/apiSlice";
 import { useEffect, useState } from "react";
+import { useAuth } from "../../../context/AuthContext";
+import { Permissions } from "../../../helpers/auth";
 
 export default function LoanProduct() {
   const [data, setData] = useState<{ loanProducts: any[] } | undefined>();
 
   const [getLoanProduct, { isLoading }] = useLazyGetLoanProductQuery();
+  const { can } = useAuth();
 
   useEffect(() => {
     const fetchLoans = async () => {
@@ -35,16 +38,18 @@ export default function LoanProduct() {
           <p>Here is the info of your lending application</p>
         </div>
 
-        <Link to="/loan-product/creat-loan" className={styles.createAddLink}>
-          <Button
-            variant="primary"
-            size="md"
-            icon={<CheckIcon />}
-            iconPosition="left"
-          >
-            Create new Loan Product
-          </Button>
-        </Link>
+        {can(Permissions.ProductsManage) && (
+          <Link to="/loan-product/creat-loan" className={styles.createAddLink}>
+            <Button
+              variant="primary"
+              size="md"
+              icon={<CheckIcon />}
+              iconPosition="left"
+            >
+              Create new Loan Product
+            </Button>
+          </Link>
+        )}
       </div>
 
       {isLoading ? (

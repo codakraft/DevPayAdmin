@@ -8,6 +8,8 @@ import {
 import "./App.css";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RequirePermission from "./components/RequirePermission";
+import { Permissions } from "./helpers/auth";
 import DashboardLayout from "./components/DashboardLayout";
 import LoginPage from "./pages/authentication/loginPage";
 import LoginOtpPage from "./pages/authentication/loginOtpPage";
@@ -20,7 +22,7 @@ import AdminManagement from "./pages/dashboard/adminManagement/index";
 import FlaggedUsers from "./pages/dashboard/userManagement/flaggedUser";
 import SuspendedUsers from "./pages/dashboard/userManagement/suspendedUsers";
 import CreateAdmin from "./pages/dashboard/adminManagement/createAdmin";
-import CreateRoles from "./pages/dashboard/adminManagement/rolePer";
+import RolesPermissions from "./pages/dashboard/adminManagement/rolePer";
 import UserProfile from "./pages/dashboard/userManagement/userProfile";
 import AdsManagement from "./pages/dashboard/adsManagement/AdsManagement";
 import CreateAdd from "./pages/dashboard/adsManagement";
@@ -56,41 +58,119 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
 
               <Route
-                path="/user-management/all-users"
-                element={<UserManagement />}
-              />
-              <Route
-                path="/user-management/flagged-users"
-                element={<FlaggedUsers />}
-              />
-              <Route
-                path="/user-management/suspended-users"
-                element={<SuspendedUsers />}
-              />
-              <Route
-                path="/user-management/user-profile/:userId"
-                element={<UserProfile />}
-              />
+                element={<RequirePermission permission={Permissions.UsersView} />}
+              >
+                <Route
+                  path="/user-management/all-users"
+                  element={<UserManagement />}
+                />
+                <Route
+                  path="/user-management/flagged-users"
+                  element={<FlaggedUsers />}
+                />
+                <Route
+                  path="/user-management/suspended-users"
+                  element={<SuspendedUsers />}
+                />
+                <Route
+                  path="/user-management/user-profile/:userId"
+                  element={<UserProfile />}
+                />
+              </Route>
 
-              <Route path="/admin-management" element={<AdminManagement />} />
               <Route
-                path="/admin-management/create"
-                element={<CreateAdmin />}
-              />
+                element={<RequirePermission permission={Permissions.UsersView} />}
+              >
+                <Route path="/admin-management" element={<AdminManagement />} />
+                <Route
+                  path="/admin-management/roles-permissions"
+                  element={
+                    <RequirePermission roles={["SuperAdmin"]}>
+                      <RolesPermissions />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="/admin-management/admin-userProfile/:userId"
+                  element={<AdminUserProfile />}
+                />
+              </Route>
               <Route
-                path="/admin-management/roles-permissions"
-                element={<CreateRoles />}
-              />
-              <Route
-                path="/admin-management/admin-userProfile/:userId"
-                element={<AdminUserProfile />}
-              />
+                element={
+                  <RequirePermission permission={Permissions.UsersManage} />
+                }
+              >
+                <Route
+                  path="/admin-management/create"
+                  element={<CreateAdmin />}
+                />
+              </Route>
 
-              <Route path="/loan-management" element={<LoanRequestPage />} />
               <Route
-                path="/loan-management/details/:id"
-                element={<LoanDetails />}
-              />
+                element={<RequirePermission permission={Permissions.LoansView} />}
+              >
+                <Route path="/loan-management" element={<LoanRequestPage />} />
+                <Route
+                  path="/loan-management/details/:id"
+                  element={<LoanDetails />}
+                />
+                <Route path="/loan" element={<AllLoan />} />
+                <Route path="/loan/unpaid-loans" element={<UnpaidLoan />} />
+                <Route path="/dashboard/loans/:id" element={<LoanDetail />} />
+                <Route
+                  path="/loan/ongoing-collections"
+                  element={<OngoingCollections />}
+                />
+                <Route
+                  path="/disbursements/all"
+                  element={<AllDisbursements />}
+                />
+                <Route
+                  path="/disbursements/details/:loanId"
+                  element={<DisbursementDetails />}
+                />
+              </Route>
+              <Route
+                element={
+                  <RequirePermission permission={Permissions.LoansDisburse} />
+                }
+              >
+                <Route path="/disbursements/disburse" element={<Disburse />} />
+              </Route>
+
+              <Route
+                element={
+                  <RequirePermission permission={Permissions.ProductsView} />
+                }
+              >
+                <Route path="/content-management" element={<LoanProduct />} />
+              </Route>
+              <Route
+                element={
+                  <RequirePermission permission={Permissions.ProductsManage} />
+                }
+              >
+                <Route
+                  path="/loan-product/creat-loan"
+                  element={<LoanProductManagement />}
+                />
+                <Route
+                  path="/content-management/edit/:id"
+                  element={<EditLoanProduct />}
+                />
+              </Route>
+
+              <Route
+                element={<RequirePermission permission={Permissions.AuditView} />}
+              >
+                <Route path="/audit-trail/index" element={<AuditTrail />} />
+              </Route>
+
+              <Route
+                element={<RequirePermission permission={Permissions.FinanceView} />}
+              >
+                <Route path="/wallet" element={<Wallet />} />
+              </Route>
 
               <Route
                 path="/features/group-communities"
@@ -104,40 +184,12 @@ function App() {
                 path="/ads-management/create"
                 element={<AdsManagement />}
               />
-              <Route
-                path="/loan-product/creat-loan"
-                element={<LoanProductManagement />}
-              />
-              <Route
-                path="/content-management/edit/:id"
-                element={<EditLoanProduct />}
-              />
-
-              <Route path="/audit-trail/index" element={<AuditTrail />} />
-
-              <Route path="/content-management" element={<LoanProduct />} />
               <Route path="/analytics" element={<div>Analytics</div>} />
               <Route
                 path="/system-settings"
                 element={<div>System Settings</div>}
               />
 
-              <Route path="/loan" element={<AllLoan />} />
-              <Route path="/loan/unpaid-loans" element={<UnpaidLoan />} />
-              <Route path="/dashboard/loans/:id" element={<LoanDetail />} />
-              <Route
-                path="/loan/ongoing-collections"
-                element={<OngoingCollections />}
-              />
-
-              <Route path="/disbursements/disburse" element={<Disburse />} />
-              <Route path="/disbursements/all" element={<AllDisbursements />} />
-              <Route
-                path="/disbursements/details/:loanId"
-                element={<DisbursementDetails />}
-              />
-
-              <Route path="/wallet" element={<Wallet />} />
             </Route>
           </Route>
 

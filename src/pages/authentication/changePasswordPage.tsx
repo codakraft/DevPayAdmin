@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import "./LoginPage.css";
 import logoImage from "../../assets/logoIcon.png";
 import { useChangePasswordMutation } from "../../store/apiSlice";
+import { useAuth } from "../../context/AuthContext";
+import { getErrorMessage, setLoginNotice } from "../../helpers/auth";
+import { getPasswordError } from "../../helpers";
 
 const ChangePasswordPage: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -11,6 +14,7 @@ const ChangePasswordPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { completePasswordChange } = useAuth();
   const [changePassword, { isLoading: changingPassword }] =
     useChangePasswordMutation();
 
@@ -26,19 +30,27 @@ const ChangePasswordPage: React.FC = () => {
       setError("Passwords do not match.");
       return;
     }
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters long.");
+    // Same rule the backend enforces
+    const passwordError = getPasswordError(newPassword);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
     setIsLoading(true);
     try {
       const payload = { currentPassword, newPassword, confirmNewPassword };
-      await changePassword(payload).unwrap();
-      alert("Password changed successfully. Please log in.");
-      navigate("/login", { replace: true });
+      const response = await changePassword(payload).unwrap();
+      // Continue with the new tokens it returns. If they're missing, fall back
+      // to signing in again.
+      if (completePasswordChange(response)) {
+        navigate("/dashboard", { replace: true });
+      } else {
+        setLoginNotice("Password changed. Please sign in.");
+        navigate("/login", { replace: true });
+      }
     } catch (err: any) {
       setError(
-        err?.data?.message || "Failed to change password. Please try again.",
+        getErrorMessage(err, "Failed to change password. Please try again."),
       );
     } finally {
       setIsLoading(false);

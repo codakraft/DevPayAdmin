@@ -144,3 +144,11 @@
     align-items: stretch;
   }
 }
+
+.status-inactive {
+  color: #b91c1c;
+  background: #fee2e2;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+}
