@@ -647,3 +647,128 @@ deploy, your step 2 should return `409 "User is already active"`.
   The placeholder Branch field and the "Disable" button were removed: there's no branch on the user and no separate disable action.
 - ~~The `/user-management/*` pages had no permission guard.~~ They're now guarded with `users.view` (see the follow-up above).
 
+
+---
+
+## QA round 2: frontend changes and backend requests (2026-10-05)
+
+### Done on the frontend
+
+| QA item | Change |
+|---|---|
+| Notification bell / messages | Removed from the header (no backend for them). |
+| Session timeout | 15 minutes without activity (shared across tabs) → 60-second "Are you still there?" warning → `admin/logout` and redirect to login with a notice. A tab reopened after the timeout is signed out on load. |
+| Pagination | Loan Requests, Loans (All / Unpaid / Ongoing Collections), Loan Product Content and Audit Trail. Loans and products load every page (`Page`/`PageSize`) so search and filters still cover all records, then paginate in the table. Audit Trail pages on the server. |
+| Admin name dropdown arrow | Removed. The header now shows the signed-in admin's name instead of a hard-coded "Admin". |
+| Forgot password | Shows "Please contact your administrator to reset your password." There's no reset endpoint yet (request 1). |
+| OTP field | Digits only, exactly 6. |
+| OTP attempts message | Shows `remainingAttempts` when the response includes it as a field. The inconsistent message itself comes from the API (request 2). |
+| Mobile | The sidebar becomes a slide-in menu on small screens. Tables scroll sideways. Dashboard grids, page headers, filters and the login page stack on phones. |
+
+Also fixed: `company/loans?Status=0` was never sent (status `0` was treated as "no filter"),
+so **Loan Requests listed every loan instead of pending ones**. It now sends `Status=0`.
+
+### Requests for the backend
+
+1. **Admin forgot / reset password.** There's no admin endpoint for this. Suggested:
+   - `POST admin/forgot-password { email }`: always 200 (don't reveal whether the email exists), emails a reset link or OTP.
+   - `POST admin/reset-password { email, token|otp, newPassword, confirmNewPassword }`: same password rule as `change-password`, revokes existing sessions.
+
+   Tell us the link format (e.g. `https://<admin-host>/reset-password?token=…&email=…`) and we'll build the pages.
+2. **OTP attempts should be reported consistently.** QA: after the first wrong OTP, the message said 4 attempts
+   remained; after the second it only said "Invalid OTP". Please return the same shape every time on
+   `verify-login` failures, e.g.
+   `{ "success": false, "message": "Invalid OTP. 3 attempts remaining.", "code": "OTP_INVALID", "data": { "remainingAttempts": 3 } }`,
+   and `code: "OTP_LOCKED"` (or similar) when no attempts remain. The frontend already reads
+   `remainingAttempts` from `data` or the top level.
+3. **Session timeout policy.** The frontend signs users out after 15 minutes of inactivity. Is there a
+   backend requirement (idle or absolute session length) we should match? With 7-day refresh tokens,
+   the server currently allows a session to continue for a week as long as a tab refreshes it.
+4. **Consistent paging metadata on list endpoints.** `company/users` returns
+   `{ page, pageSize, totalCount, totalPages, hasNextPage }`. Please return the same on `company/loans`,
+   `company/loan-products` and `Audit`. Also add `Page`/`PageSize` to `loan/disbursements`, which has
+   none. Without `hasNextPage`/`totalCount`, the frontend has to guess when it has reached the last page.
+   If the API ever caps `PageSize` below what we ask for, without that metadata we'd stop early.
+
+### Backend responses to QA round 2 (2026-10-05)
+
+These are local on the backend and not deployed yet. We'll post here when they're on staging.
+
+1. **Admin forgot / reset password: done, using an emailed 6-digit code (not a link).**
+   Both endpoints are anonymous.
+   - `POST admin/forgot-password { email }` always returns `200`
+     "If an account exists for this email, a reset code has been sent." The code expires in
+     **10 minutes**. At most 3 codes can be requested per email per 5 minutes; past that, the
+     response is still `200` but no email is sent. A new code invalidates the previous one.
+   - `POST admin/reset-password { email, otp, newPassword, confirmNewPassword }` returns `200`
+     "Password reset successfully. Please log in with your new password."
+     The password rule is the same as `change-password` (8+ chars, upper, lower, digit, special).
+     A password that breaks it returns `400` "Failed to reset password: …" **without using up
+     the code**, so the user can fix it and resubmit the same code. A successful reset:
+     - signs the user out everywhere (all access and refresh tokens die)
+     - clears `requiresPasswordChange`
+     - returns no tokens, so send the user to the login page
+   - OTP errors use the same shape as `verify-login` (item 2), and the message ends with
+     "Please request a new code."
+   - Pages to build: an email form that calls `forgot-password` and then moves on to a
+     "code + new password" form that calls `reset-password`. Replace the "contact your
+     administrator" message.
+
+2. **OTP attempts: fixed, and the limit is now 3.** Every failed `verify-login` (and
+   `reset-password`) OTP now returns `400` with a `code` and `data.remainingAttempts`, every time:
+
+   | `code` | When | `message` | `data.remainingAttempts` |
+   |---|---|---|---|
+   | `OTP_INVALID` | Wrong code, tries left | "Invalid OTP. 2 attempts remaining." / "…1 attempt remaining." | 2 or 1 |
+   | `OTP_LOCKED` | 3rd wrong code (on `reset-password`, also any later try with that code) | "Too many failed attempts. Please log in again to get a new code." | 0 |
+   | `OTP_EXPIRED` | Code expired, already used or never issued | "This code has expired or is no longer valid. Please log in again to get a new code." | 0 |
+
+   On `verify-login`, `OTP_LOCKED` and `OTP_EXPIRED` also end the login session, so send the
+   user back to the login page. A retry with the same `sessionId` returns `404`
+   "Invalid or expired session". Match on `code`, not on the message. The cause of QA's
+   bare "Invalid OTP" was that every failure except a plain wrong code was collapsed into
+   that message without a count.
+
+3. **Session timeout:** no backend change. The frontend's 15-minute idle sign-out stands.
+
+4. **Paging metadata.**
+   - `company/loans` and `company/loan-products` **already** return `totalCount`, `page`,
+     `pageSize`, `totalPages`, `hasNextPage` and `hasPreviousPage` next to `loans` /
+     `loanProducts` in `data`. No backend change; please read them from there.
+   - **`Audit` (breaking):** it used to return a bare array. It now returns the usual envelope:
+     `{ success, message, data: { logs: [...], totalCount, page, pageSize, totalPages, hasNextPage, hasPreviousPage } }`.
+     Query params are unchanged (`page`, `pageSize`, `category`, `companyId`, `fromDate`, `toDate`).
+   - **`loan/disbursements` (breaking):** it now takes `page` (default 1) and `pageSize`
+     (default **20**). `data` is now
+     `{ disbursements: [...], totalCount, page, pageSize, totalPages, hasNextPage, hasPreviousPage }`
+     instead of an array, newest first.
+   - On `Audit` and `loan/disbursements`, `pageSize` is capped at **100**: a bigger value
+     returns 100 per page, and `data.pageSize` shows the size actually used. Loop on
+     `hasNextPage` to load everything. `company/loans` and `company/loan-products` are not
+     capped today.
+
+### Frontend follow-up to the QA round 2 responses (2026-10-05)
+
+All four items are handled on the frontend. The type check and build pass. **Not tested against the API yet**
+because these backend changes aren't on staging. The frontend accepts both the old and the new
+response shapes, so it's safe to deploy in either order.
+
+| # | Frontend change |
+|---|---|
+| 1 | New public page `/forgot-password` with two steps. (a) Enter your email → `admin/forgot-password` → "If an account exists… expires in 10 minutes." (b) 6-digit code + new password + confirm → `admin/reset-password` → login page with the success message. The password rule is checked before submitting. "Send a new code" calls `forgot-password` again. `OTP_LOCKED`/`OTP_EXPIRED` clear the code field and show your message. The login page's "Forgot password?" now opens this page (pre-filling the email). |
+| 2 | `verify-login` failures branch on `code`. `OTP_INVALID` shows your message (with `remainingAttempts` only if the message doesn't already mention attempts). `OTP_LOCKED`, `OTP_EXPIRED` and the `404` session error clear the login session and send the user to the login page with your message. |
+| 3 | No change: the 15-minute idle sign-out stays. |
+| 4 | Audit Trail reads `data.logs` and `data.totalCount` (the old bare array still works until you deploy). Loans and products already read `hasNextPage`/`totalPages` from `data`. `getDisbursements` now accepts `page`/`pageSize`. No page uses it today (the disbursement screens use `company/loans`), so the shape change breaks nothing. |
+
+Also picked up from your earlier replies (the company-id fix section):
+
+- **`PUT admin/users/{userId}`:** the profile page's Edit mode now has first/last name inputs (1–100 chars,
+  trimmed). Update sends the name change first, then role, then status. Phone and gender aren't shown.
+- **`GET company/users/{userId}`:** the profile page loads by the id in the URL, so a refresh or shared
+  link works. It falls back to the user passed from the table until this is deployed.
+- **No roles:** `roles: []` with `role` omitted shows a red "No role" badge in the table and on the profile.
+  The row menu stays available, so an admin can assign a role.
+
+**Remaining for the backend:** post here when the QA round 2 changes and the company-id fix /
+`PUT admin/users/{userId}` / `GET company/users/{userId}` are on staging. We'll then test forgot/reset
+password, the OTP lock/expiry flow, Audit paging and the user-management actions end to end.

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import TablePagination, { usePagination } from "../../../../components/TablePagination";
 import styles from "./loanTable.module.css";
 
 const dummyData = [
@@ -155,6 +156,7 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
       return searchMatch && statusMatch && dateMatch;
     });
   }, [searchQuery, statusFilter, dateFilter, data]);
+  const { pageItems, paginationProps } = usePagination(filteredData);
 
   const isAllSelected =
     selected.length === filteredData.length && filteredData.length > 0;
@@ -280,117 +282,120 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
         </div>
       </div>
 
-      <table className={styles.customTable}>
-        <thead>
-          <tr>
-            <th>
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={toggleAll}
-              />
-            </th>
-            <th>Date Created</th>
-            <th>First Name</th>
-            <th>Last name</th>
-            <th>Email</th>
-            <th>Loan Purpose</th>
-            <th>Loan Amount</th>
-            <th>Loan Duration</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredData.map((row: LoanRequest) => (
-            <tr
-              key={`${row.id}-${row.userFirstName}-${row.userLastName}`}
-              style={{ cursor: "pointer" }}
-              onClick={() => handleViewLoan(row)}
-            >
-              <td>
+      <div className="table-scroll">
+        <table className={styles.customTable}>
+          <thead>
+            <tr>
+              <th>
                 <input
                   type="checkbox"
-                  checked={selected.includes(Number(row.id))}
-                  onChange={() => toggleOne(Number(row.id))}
+                  checked={isAllSelected}
+                  onChange={toggleAll}
                 />
-              </td>
-              <td>
-                <div className={styles.adDetails}>
-                  {/* <img src={row.image} alt={row.title} /> */}
-                  <div>
-                    {/* <strong>{row.dateCreated}</strong> */}
-                    <p>
-                      {new Date(row.createdAt).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </p>
-                  </div>
-                </div>
-              </td>
-              <td>{row.userFirstName}</td>
-              <td>{row.userLastName}</td>
-              <td>{row.userEmail}</td>
-              <td>{row.purpose}</td>
-              <td>₦{row.amount.toLocaleString()}</td>
-              <td>{row.durationInMonths} Months</td>
-              <td>
-                <span
-                  className={`${styles.badge} ${
-                    styles[row.statusDisplay.toLowerCase()]
-                  }`}
-                >
-                  {row.statusDisplay}
-                </span>
-              </td>
-              <td>
-                <div style={{ position: "relative", zIndex: 2 }}>
-                  <button
-                    className={styles.ellipsisBtn}
-                    aria-label="More options"
-                    style={{ zIndex: 3, position: "relative" }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleDropdown(Number(row.id));
-                    }}
-                  >
-                    ...
-                  </button>
-                  {dropdownOpen === Number(row.id) && (
-                    <div
-                      className={styles.dropdownMenu}
-                      role="menu"
-                      style={{
-                        zIndex: 10,
-                        position: "absolute",
-                        pointerEvents: "auto",
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className={styles.dropdownItem}
-                        onClick={() => handleViewLoan(row)}
-                        role="menuitem"
-                      >
-                        View Details
-                      </button>
+              </th>
+              <th>Date Created</th>
+              <th>First Name</th>
+              <th>Last name</th>
+              <th>Email</th>
+              <th>Loan Purpose</th>
+              <th>Loan Amount</th>
+              <th>Loan Duration</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.map((row: LoanRequest) => (
+              <tr
+                key={`${row.id}-${row.userFirstName}-${row.userLastName}`}
+                style={{ cursor: "pointer" }}
+                onClick={() => handleViewLoan(row)}
+              >
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(Number(row.id))}
+                    onChange={() => toggleOne(Number(row.id))}
+                  />
+                </td>
+                <td>
+                  <div className={styles.adDetails}>
+                    {/* <img src={row.image} alt={row.title} /> */}
+                    <div>
+                      {/* <strong>{row.dateCreated}</strong> */}
+                      <p>
+                        {new Date(row.createdAt).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </p>
                     </div>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-          {filteredData.length === 0 && (
-            <tr>
-              <td colSpan={11} className={styles.noResults}>
-                No loan requests found matching your search criteria.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                  </div>
+                </td>
+                <td>{row.userFirstName}</td>
+                <td>{row.userLastName}</td>
+                <td>{row.userEmail}</td>
+                <td>{row.purpose}</td>
+                <td>₦{row.amount.toLocaleString()}</td>
+                <td>{row.durationInMonths} Months</td>
+                <td>
+                  <span
+                    className={`${styles.badge} ${
+                      styles[row.statusDisplay.toLowerCase()]
+                    }`}
+                  >
+                    {row.statusDisplay}
+                  </span>
+                </td>
+                <td>
+                  <div style={{ position: "relative", zIndex: 2 }}>
+                    <button
+                      className={styles.ellipsisBtn}
+                      aria-label="More options"
+                      style={{ zIndex: 3, position: "relative" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleDropdown(Number(row.id));
+                      }}
+                    >
+                      ...
+                    </button>
+                    {dropdownOpen === Number(row.id) && (
+                      <div
+                        className={styles.dropdownMenu}
+                        role="menu"
+                        style={{
+                          zIndex: 10,
+                          position: "absolute",
+                          pointerEvents: "auto",
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          className={styles.dropdownItem}
+                          onClick={() => handleViewLoan(row)}
+                          role="menuitem"
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filteredData.length === 0 && (
+              <tr>
+                <td colSpan={11} className={styles.noResults}>
+                  No loan requests found matching your search criteria.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <TablePagination {...paginationProps} />
     </div>
   );
 }

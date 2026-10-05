@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import TablePagination, { usePagination } from "../../../components/TablePagination";
 import styles from "./AdsTable.module.css";
 import { LoanRequest } from "../loanRequest/components/loanTable";
 
@@ -112,7 +113,8 @@ export default function AllCollectionsTable({ data }: LoanRequestTableProps) {
 
       return searchMatch && dateMatch;
     });
-  }, [searchQuery, dateFilter]);
+  }, [searchQuery, dateFilter, data]);
+  const { pageItems, paginationProps } = usePagination(filteredData);
 
   const isAllSelected =
     selected.length === filteredData.length && filteredData.length > 0;
@@ -210,74 +212,77 @@ export default function AllCollectionsTable({ data }: LoanRequestTableProps) {
         </div>
       </div>
 
-      <table className={styles.customTable}>
-        <thead>
-          <tr>
-            <th>
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={toggleAll}
-              />
-            </th>
-            <th>Date Created</th>
-            <th>Name</th>
-            {/* <th>Account No.</th> */}
-            <th>Loan Amount</th>
-            <th>Tenure(Months)</th>
-            <th>Pending Principal</th>
-            <th>Pending Interest</th>
-            <th>Total Pending</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredData.map((row) => (
-            <tr
-              key={`${row.id}-${row.userFullName}`}
-              onClick={(e) => handleRowClick(Number(row.id), e)}
-              className={styles.clickableRow}
-            >
-              <td onClick={(e) => e.stopPropagation()}>
+      <div className="table-scroll">
+        <table className={styles.customTable}>
+          <thead>
+            <tr>
+              <th>
                 <input
                   type="checkbox"
-                  checked={selected.includes(Number(row.id))}
-                  onChange={() => toggleOne(Number(row.id))}
+                  checked={isAllSelected}
+                  onChange={toggleAll}
                 />
-              </td>
-              <td>
-                <div className={styles.adDetails}>
-                  <div>
-                    <p>{row.createdAt}</p>
+              </th>
+              <th>Date Created</th>
+              <th>Name</th>
+              {/* <th>Account No.</th> */}
+              <th>Loan Amount</th>
+              <th>Tenure(Months)</th>
+              <th>Pending Principal</th>
+              <th>Pending Interest</th>
+              <th>Total Pending</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.map((row) => (
+              <tr
+                key={`${row.id}-${row.userFullName}`}
+                onClick={(e) => handleRowClick(Number(row.id), e)}
+                className={styles.clickableRow}
+              >
+                <td onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(Number(row.id))}
+                    onChange={() => toggleOne(Number(row.id))}
+                  />
+                </td>
+                <td>
+                  <div className={styles.adDetails}>
+                    <div>
+                      <p>{row.createdAt}</p>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td>{row.userFullName}</td>
-              {/* <td>{row.accountNo}</td> */}
-              <td>₦{row.amount.toLocaleString()}</td>
-              <td>{row.durationInMonths} months</td>
-              <td>₦{row.amount.toLocaleString()}</td>
-              <td>₦{(row.amount * 0.045 || 0).toLocaleString()}</td>
-              <td>₦{(row.amount * 0.045 + row.amount).toLocaleString()}</td>
-              <td onClick={(e) => e.stopPropagation()}>
-                <button
-                  className={styles.ellipsisBtn}
-                  aria-label="More options"
-                >
-                  ...
-                </button>
-              </td>
-            </tr>
-          ))}
-          {filteredData.length === 0 && (
-            <tr>
-              <td colSpan={9} className={styles.noResults}>
-                No collections found matching your search criteria.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                </td>
+                <td>{row.userFullName}</td>
+                {/* <td>{row.accountNo}</td> */}
+                <td>₦{row.amount.toLocaleString()}</td>
+                <td>{row.durationInMonths} months</td>
+                <td>₦{row.amount.toLocaleString()}</td>
+                <td>₦{(row.amount * 0.045 || 0).toLocaleString()}</td>
+                <td>₦{(row.amount * 0.045 + row.amount).toLocaleString()}</td>
+                <td onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className={styles.ellipsisBtn}
+                    aria-label="More options"
+                  >
+                    ...
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {filteredData.length === 0 && (
+              <tr>
+                <td colSpan={9} className={styles.noResults}>
+                  No collections found matching your search criteria.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <TablePagination {...paginationProps} />
     </div>
   );
 }

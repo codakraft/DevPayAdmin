@@ -75,7 +75,13 @@ const dropdownMenus: Record<string, SubMenuItem[]> = {
   ],
 };
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  // Drawer state on small screens; ignored on desktop where it's always shown
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   // Get current location for active link styling
   const location = useLocation();
   const navigate = useNavigate();
@@ -121,9 +127,17 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? "open" : ""}`}>
       <div className="logo-container">
         <img src={logoImage} alt="Japaflex" className="logo" />
+        <button
+          type="button"
+          className="sidebar-close"
+          aria-label="Close menu"
+          onClick={onClose}
+        >
+          ×
+        </button>
         {/* <h2 className="logo-text">deVpay</h2> */}
       </div>
 

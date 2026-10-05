@@ -4,6 +4,8 @@ export const REFRESH_TOKEN_KEY = "devpay_admin_refresh_token";
 export const USER_KEY = "devpay_admin_user";
 // User returned by verify-login while a password change is still pending
 export const PENDING_USER_KEY = "devpay_admin_pending_user";
+// Last user activity, for the idle session timeout (shared across tabs)
+export const LAST_ACTIVITY_KEY = "devpay_admin_last_activity";
 const LOGIN_NOTICE_KEY = "devpay_admin_login_notice";
 
 // Fired in this tab whenever the access token is replaced (e.g. after a refresh)
@@ -14,7 +16,16 @@ export const ErrorCodes = {
   PasswordChangeRequired: "PASSWORD_CHANGE_REQUIRED",
   AccountDeactivated: "ACCOUNT_DEACTIVATED",
   PermissionDenied: "PERMISSION_DENIED",
+  // verify-login and reset-password OTP failures
+  OtpInvalid: "OTP_INVALID",
+  OtpLocked: "OTP_LOCKED",
+  OtpExpired: "OTP_EXPIRED",
 } as const;
+
+// The OTP can't be retried: request a new one (log in again / resend the reset code)
+export const isOtpDeadEnd = (error: any) =>
+  getErrorCode(error) === ErrorCodes.OtpLocked ||
+  getErrorCode(error) === ErrorCodes.OtpExpired;
 
 export const getErrorCode = (error: any): string | undefined =>
   error?.data?.code;
@@ -97,6 +108,7 @@ export const clearStoredAuth = () => {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(PENDING_USER_KEY);
+  localStorage.removeItem(LAST_ACTIVITY_KEY);
 };
 
 // One-off message shown on the login page after we sign the user out

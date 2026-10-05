@@ -91,3 +91,66 @@
   background-color: #f5f5f5;
   overflow-y: auto;
 }
+.main-content {
+  min-width: 0;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .dashboard-container .main-content {
+    width: 100%;
+    padding: 0 12px 16px;
+  }
+}
+
+.session-timeout-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.session-timeout-dialog {
+  width: min(400px, 100%);
+  padding: 24px;
+  border-radius: 8px;
+  background: white;
+  text-align: center;
+}
+
+.session-timeout-dialog h3 {
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.session-timeout-dialog p {
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: #4B5563;
+}
+
+.session-timeout-dialog button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  background-color: #3A7145;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}

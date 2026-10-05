@@ -14,6 +14,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import LoginPage from "./pages/authentication/loginPage";
 import LoginOtpPage from "./pages/authentication/loginOtpPage";
 import ChangePasswordPage from "./pages/authentication/changePasswordPage";
+import ForgotPasswordPage from "./pages/authentication/forgotPasswordPage";
 
 // Import dashboard pages
 import Dashboard from "./pages/dashboard";
@@ -51,6 +52,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/login-otp" element={<LoginOtpPage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
 
           <Route element={<ProtectedRoute />}>

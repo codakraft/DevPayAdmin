@@ -6,7 +6,7 @@ import {
   FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
 import { API_BASE_URL } from "../config/environment";
-import { AdminUserQueryParams, AdminUserResponse, CompanyDashboardResponse, CreateLoanData, RoleOption, WalletResponse, FundWalletRequestData, FundWalletResponse, CompleteFundWalletRequestData, CompleteFundWalletResponse, WalletTransactionsResponse, WalletTransactionsRequest } from "../types/types";
+import { AdminUser, AdminUserQueryParams, AdminUserResponse, CompanyDashboardResponse, CreateLoanData, RoleOption, WalletResponse, FundWalletRequestData, FundWalletResponse, CompleteFundWalletRequestData, CompleteFundWalletResponse, WalletTransactionsResponse, WalletTransactionsRequest } from "../types/types";
 import {
   ACCESS_TOKEN_KEY,
   REFRESH_TOKEN_KEY,
@@ -32,6 +32,8 @@ const NO_REFRESH_URLS = [
   "admin/verify-login",
   "admin/refresh",
   "admin/logout",
+  "admin/forgot-password",
+  "admin/reset-password",
 ];
 
 // Saves a token pair from refresh or change-password and tells AuthContext
@@ -183,10 +185,13 @@ export const apiSlice = createApi({
         method: "GET",
       }),
     }),
-    getLoanProduct: builder.query<any, void>({
-      query: () => ({
+    getLoanProduct: builder.query<any, { page?: number; pageSize?: number } | void>({
+      query: (params) => ({
         url: `company/loan-products`,
         method: "GET",
+        params: params
+          ? { Page: params.page, PageSize: params.pageSize }
+          : undefined,
       }),
     }),
     createLoanProduct: builder.mutation<any, CreateLoanData>({
@@ -254,13 +259,20 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["AdminUsers"],
     }),
-    getLoans: builder.query<any, {status?: number | number[]}>({
-      query: ({status}) => {
-        const statusParam = Array.isArray(status) 
-          ? status.map(s => `Status=${s}`).join('&')
-          : status ? `Status=${status}` : '';
+    getLoans: builder.query<any, { status?: number | number[]; page?: number; pageSize?: number }>({
+      query: ({ status, page, pageSize }) => {
+        const params = new URLSearchParams();
+        // Status 0 (pending) is a valid filter, so check for undefined rather than falsy
+        if (Array.isArray(status)) {
+          status.forEach((s) => params.append("Status", String(s)));
+        } else if (status !== undefined) {
+          params.append("Status", String(status));
+        }
+        if (page !== undefined) params.append("Page", String(page));
+        if (pageSize !== undefined) params.append("PageSize", String(pageSize));
+        const query = params.toString();
         return {
-          url: `company/loans${statusParam ? `?${statusParam}` : ''}`,
+          url: `company/loans${query ? `?${query}` : ""}`,
           method: "GET",
         };
       },
@@ -284,6 +296,23 @@ export const apiSlice = createApi({
         params: params || undefined,
       }),
       providesTags: ["AdminUsers"],
+    }),
+    // One user, same shape as an entry of company/users. 404 for other companies.
+    getAdminUserById: builder.query<{ success: boolean; message: string; data: AdminUser }, string>({
+      query: (userId) => ({
+        url: `company/users/${userId}`,
+        method: "GET",
+      }),
+      providesTags: ["AdminUsers"],
+    }),
+    // First and last name only; can't be used on yourself
+    updateAdminUser: builder.mutation<any, { userId: string; firstName: string; lastName: string }>({
+      query: ({ userId, ...body }) => ({
+        url: `admin/users/${userId}`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: ["AdminUsers"],
     }),
     approveLoan: builder.mutation<any, { reason: string; id: string; }>({
       query: ({ reason, id }) => ({
@@ -309,10 +338,13 @@ export const apiSlice = createApi({
         method: "POST",
       }),
     }),
-    getDisbursements: builder.query<any, void>({
-      query: () => ({
+    // Paged: `data` is { disbursements, totalCount, page, pageSize, totalPages, hasNextPage }.
+    // pageSize is capped at 100 by the API.
+    getDisbursements: builder.query<any, { page?: number; pageSize?: number } | void>({
+      query: (params) => ({
         url: `loan/disbursements`,
         method: "GET",
+        params: params || undefined,
       }),
     }),
     getCompanyWallet: builder.query<WalletResponse, void>({
@@ -341,6 +373,27 @@ export const apiSlice = createApi({
         method: "GET",
       }),
     }),
+    // Anonymous. Always 200, whether or not the email exists.
+    forgotPassword: builder.mutation<any, { email: string }>({
+      query: (body) => ({
+        url: `admin/forgot-password`,
+        method: "POST",
+        body,
+      }),
+    }),
+    // Anonymous. Returns no tokens; the user signs in again afterwards.
+    resetPassword: builder.mutation<any, {
+      email: string;
+      otp: string;
+      newPassword: string;
+      confirmNewPassword: string;
+    }>({
+      query: (body) => ({
+        url: `admin/reset-password`,
+        method: "POST",
+        body,
+      }),
+    }),
     logout: builder.mutation<any, void>({
       query: () => ({
         url: `admin/logout`,
@@ -367,6 +420,8 @@ export const {
   useLazyGetCompanyDashboardQuery,
   useGetAdminUserQuery,
   useLazyGetAdminUserQuery,
+  useGetAdminUserByIdQuery,
+  useUpdateAdminUserMutation,
   useLazyGetCompayLoansQuery,
   useApproveLoanMutation,
   useRejectLoanMutation,
@@ -375,6 +430,8 @@ export const {
   useCompleteFundWalletMutation,
   useGetWalletTransactionsQuery,
   useLogoutMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
   useLazyGetLoansByIDQuery,
   useDisburseLoanMutation,
   useLazyGetDisbursementsQuery,

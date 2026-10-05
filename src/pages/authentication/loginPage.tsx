@@ -57,8 +57,7 @@ const LoginPage: React.FC = () => {
   };
 
   const handleForgotPassword = () => {
-    // Handle forgot password logic here
-    console.log("Forgot password clicked");
+    navigate("/forgot-password", { state: { email } });
   };
 
   return (
@@ -80,7 +79,7 @@ const LoginPage: React.FC = () => {
               {error ? (
                 <div className="error-message">{error}</div>
               ) : (
-                notice && <div className="error-message">{notice}</div>
+                notice && <div className="info-message">{notice}</div>
               )}
 
               <div className="form-group">

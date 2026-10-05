@@ -3,6 +3,7 @@ import styles from "../adsManagement/createAdd.module.css";
 import AllCollectionsTable from "../components/AllCollectiosTable";
 import React, { useEffect, useState } from "react";
 import { useLazyGetLoansQuery } from "../../../store/apiSlice";
+import { fetchAllPages, toPageResult } from "../../../helpers/pagination";
 
 export default function OngoingCollections() {
   const [getLoans, { isLoading: isLoadingCompanyLoans }] =
@@ -13,13 +14,12 @@ export default function OngoingCollections() {
   const fetchLoans = React.useCallback(
     async (statusValue: string) => {
       try {
-        const response = await getLoans({
-          status: 0,
-        }).unwrap();
-        console.log("Fetched loanscollections:", response.data);
-        if (response?.data) {
-          setData(response.data.loans);
-        }
+        // No status filter: this page has always listed every loan (status 0
+        // used to be dropped from the request by mistake)
+        const loans = await fetchAllPages(async (page, pageSize) =>
+          toPageResult<any>(await getLoans({ page, pageSize }).unwrap(), "loans")
+        );
+        setData(loans);
       } catch (error) {
         console.error("Failed to fetch loans:", error);
       }

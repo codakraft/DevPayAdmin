@@ -678,3 +678,24 @@
   color: #3A7145;
   font-weight: 500;
 }
+
+@media (max-width: 640px) {
+  .admin-management-actions {
+    justify-content: stretch;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .action-buttons button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .form-container,
+  .admin-form-container {
+    padding: 0;
+  }
+}

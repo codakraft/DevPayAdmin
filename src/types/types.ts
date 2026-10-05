@@ -140,8 +140,8 @@ export interface AdminUser {
   isActive: boolean;
   createdAt: string;
   lastLoginAt: string | null;
-  // First role only, kept for compatibility; prefer `roles`
-  role: string;
+  // First role only, kept for compatibility; prefer `roles`. Omitted when the user has no roles.
+  role?: string;
   roles?: { id: string; name: string }[];
 }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import styles from "../components/AdsTable.module.css";
 import { useLazyGetAuditTrailQuery } from "../../../store/apiSlice";
+import TablePagination from "../../../components/TablePagination";
 
 export default function AuditTable() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -8,7 +9,8 @@ export default function AuditTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [auditData, setAuditData] = useState<any[]>([]);
-  const [totalRecords, setTotalRecords] = useState(0);
+  // Undefined when the API doesn't report a total
+  const [totalRecords, setTotalRecords] = useState<number | undefined>();
   
   const [getAuditTrail, { isLoading, isFetching }] = useLazyGetAuditTrailQuery();
 
@@ -21,30 +23,26 @@ export default function AuditTable() {
         }).unwrap();
         
         // Try different response structures
+        // A plain array doesn't say how many records exist in total, so the
+        // total stays undefined and "Next" relies on whether this page was full
         let items = [];
-        let total = 0;
+        let total: number | undefined;
         
         if (Array.isArray(response)) {
           items = response;
-          total = response.length;
         } else if (response?.data) {
           if (Array.isArray(response.data)) {
-            // response.data is an array
-            
             items = response.data;
-            total = response.data.length;
+          } else if (Array.isArray(response.data.logs)) {
+            items = response.data.logs;
+            total = response.data.totalCount;
           } else if (response.data.items) {
-            // response.data.items is the array
-            
             items = response.data.items;
-            total = response.data.totalCount || response.data.totalRecords || items.length;
-          } else {
-            
+            total = response.data.totalCount ?? response.data.totalRecords;
           }
         } else if (response?.items) {
-          
           items = response.items;
-          total = response.totalCount || response.totalRecords || items.length;
+          total = response.totalCount ?? response.totalRecords;
         }
         
         
@@ -125,21 +123,6 @@ export default function AuditTable() {
 
         <div className={styles.filtersContainer}>
           <select
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setCurrentPage(1);
-            }}
-            className={styles.filterSelect}
-            style={{ marginRight: 12 }}
-          >
-            <option value={10}>10 per page</option>
-            <option value={25}>25 per page</option>
-            <option value={50}>50 per page</option>
-            <option value={100}>100 per page</option>
-          </select>
-          
-          <select
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
             className={styles.filterSelect}
@@ -184,6 +167,7 @@ export default function AuditTable() {
         </div>
       ) : (
         <>
+          <div className="table-scroll">
           <table className={styles.customTable}>
             <thead>
               <tr>
@@ -260,60 +244,21 @@ export default function AuditTable() {
               )}
             </tbody>
           </table>
+          </div>
 
-          {/* Pagination Controls */}
-          <div className={styles.paginationContainer} style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px',
-            borderTop: '1px solid #e5e7eb'
-          }}>
-            <div>
-              Showing {filteredData.length > 0 ? ((currentPage - 1) * pageSize) + 1 : 0} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} records
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className={styles.paginationBtn}
-                style={{
-                  padding: '8px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  background: currentPage === 1 ? '#f3f4f6' : 'white',
-                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                  opacity: currentPage === 1 ? 0.5 : 1
-                }}
-              >
-                Previous
-              </button>
-              <span style={{
-                padding: '8px 16px',
-                border: '1px solid #3A7145',
-                borderRadius: '6px',
-                background: '#3A7145',
-                color: 'white',
-                fontWeight: '600'
-              }}>
-                Page {currentPage}
-              </span>
-              <button
-                onClick={() => setCurrentPage(prev => prev + 1)}
-                disabled={currentPage * pageSize >= totalRecords}
-                className={styles.paginationBtn}
-                style={{
-                  padding: '8px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  background: currentPage * pageSize >= totalRecords ? '#f3f4f6' : 'white',
-                  cursor: currentPage * pageSize >= totalRecords ? 'not-allowed' : 'pointer',
-                  opacity: currentPage * pageSize >= totalRecords ? 0.5 : 1
-                }}
-              >
-                Next
-              </button>
-            </div>
+          <div style={{ padding: "0 20px" }}>
+            <TablePagination
+              page={currentPage}
+              pageSize={pageSize}
+              total={totalRecords}
+              hasNextPage={auditData.length === pageSize}
+              disabled={isFetching}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
           </div>
         </>
       )}
