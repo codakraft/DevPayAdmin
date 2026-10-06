@@ -220,15 +220,36 @@ const LoanDetails = () => {
     ).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
   }
 
+  const formatNaira = (value: unknown) =>
+    value === null || value === undefined || value === "" || isNaN(Number(value))
+      ? "N/A"
+      : `₦${Number(value).toLocaleString(undefined, {
+          maximumFractionDigits: 2,
+        })}`;
+
   // Get salary history data from response
   const salaryHistory = loanData?.salaryHistory;
-  const averageMonthlySalary = salaryHistory?.averageMonthlySalary
-    ? `₦${Number(salaryHistory.averageMonthlySalary).toLocaleString(undefined, {
-        maximumFractionDigits: 2,
-      })}`
-    : "N/A";
-  const employerName =
-    salaryHistory?.companyName || loanData?.companyName || "N/A";
+  // `employer` comes from onboarding. Not loanData.companyName: that's the
+  // lending company, not the borrower's employer.
+  const employerName: string | null =
+    loanData?.employer || salaryHistory?.companyName || null;
+  // null for Mono applicants (it comes from Remita salary history)
+  const rawMonthlyIncome =
+    loanData?.monthlyIncome ?? salaryHistory?.averageMonthlySalary ?? null;
+  const monthlyIncome = formatNaira(rawMonthlyIncome);
+  // Mono credit analysis; null for Remita applicants or once the cached analysis expires
+  const creditScore: number | null = loanData?.creditScore ?? null;
+  const riskLevel: string | null = loanData?.riskLevel ?? null;
+  const riskClass = riskLevel ? `risk-${riskLevel.toLowerCase()}` : "";
+  const applicantName =
+    loanData.userFullName ||
+    `${loanData.userFirstName ?? ""} ${loanData.userLastName ?? ""}`.trim() ||
+    "N/A";
+  const interestRate =
+    loanData.productInterestRate !== undefined &&
+    loanData.productInterestRate !== null
+      ? `${String(loanData.productInterestRate).replace("%", "")}%`
+      : "N/A";
 
   return (
     <div>
@@ -280,24 +301,24 @@ const LoanDetails = () => {
               <span className="label">Email</span>
               <span className="value">{loanData.userEmail}</span>
             </div>
-            <div className="info-item">
-              <span className="label">Phone</span>
-              <span className="value">
-                {loanData.userPhoneNumber || "08045647363"}
-              </span>
-            </div>
-            <div className="info-item">
-              <span className="label">Employment Status</span>
-              <span className="value">
-                {loanData.employmentStatus || "Employed"}
-              </span>
-            </div>
-            <div className="info-item">
-              <span className="label">Monthly Income</span>
-              <span className="value">
-                ₦{loanData.monthlyIncome?.toLocaleString() || "N/A"}
-              </span>
-            </div>
+            {loanData.userPhoneNumber && (
+              <div className="info-item">
+                <span className="label">Phone</span>
+                <span className="value">{loanData.userPhoneNumber}</span>
+              </div>
+            )}
+            {loanData.address && (
+              <div className="info-item">
+                <span className="label">Address</span>
+                <span className="value">{loanData.address}</span>
+              </div>
+            )}
+            {rawMonthlyIncome !== null && (
+              <div className="info-item">
+                <span className="label">Monthly Income</span>
+                <span className="value">{monthlyIncome}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -328,12 +349,12 @@ const LoanDetails = () => {
             <div className="info-item">
               <span className="label">Interest Rate</span>
               <span className="value">
-                {loanData.productInterestRate || "4.5"}%
+                {interestRate}
               </span>
             </div>
             <div className="info-item">
               <span className="label">Monthly Repayment</span>
-              <span className="value">{monthlyRepayment}</span>
+              <span className="value">{monthlyRepayment || "N/A"}</span>
             </div>
           </div>
         </div>
@@ -346,16 +367,25 @@ const LoanDetails = () => {
           <div className="risk-content">
             <div className="credit-score-widget">
               <div className="score-circle">
-                <span className="score-number">{loanData.creditScore}</span>
+                <span className="score-number">{creditScore ?? "—"}</span>
                 <span className="score-label">Credit Score</span>
               </div>
-              <div className="score-status excellent">Excellent</div>
+              {creditScore !== null && (
+                <div className="score-status">out of 1000</div>
+              )}
             </div>
             <div className="risk-details">
               <div className="info-item">
                 <span className="label">Risk Level</span>
-                <span className="value risk-low">Low Risk</span>
+                <span className={`value ${riskClass}`}>
+                  {riskLevel ? `${riskLevel} Risk` : "Not available"}
+                </span>
               </div>
+              {creditScore === null && riskLevel === null && (
+                <p className="risk-note">
+                  No credit analysis is available for this applicant.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -366,16 +396,22 @@ const LoanDetails = () => {
             <h2>Employment & Financial Information</h2>
           </div>
           <div className="employment-content">
-            <div className="employer-info">
-              <div className="info-item">
-                <span className="label">Employer</span>
-                <span className="value">{employerName}</span>
+            {(employerName || rawMonthlyIncome !== null) && (
+              <div className="employer-info">
+                {employerName && (
+                  <div className="info-item">
+                    <span className="label">Employer</span>
+                    <span className="value">{employerName}</span>
+                  </div>
+                )}
+                {rawMonthlyIncome !== null && (
+                  <div className="info-item highlight-salary">
+                    <span className="label">Monthly Income</span>
+                    <span className="value large">{monthlyIncome}</span>
+                  </div>
+                )}
               </div>
-              <div className="info-item highlight-salary">
-                <span className="label">Average Monthly Salary</span>
-                <span className="value large">{averageMonthlySalary}</span>
-              </div>
-            </div>
+            )}
 
             <div className="financial-tables">
               <div className="table-section">
@@ -574,24 +610,31 @@ const LoanDetails = () => {
                 <div className="summary-details">
                   <div className="summary-item">
                     <span className="label">Applicant:</span>
-                    <span className="value">{loanData?.applicantName}</span>
+                    <span className="value">{applicantName}</span>
                   </div>
                   <div className="summary-item">
                     <span className="label">Amount Requested:</span>
-                    <span className="value">{loanData?.amountRequested}</span>
+                    <span className="value">{formatNaira(loanData?.amount)}</span>
                   </div>
                   <div className="summary-item">
                     <span className="label">Purpose:</span>
-                    <span className="value">{loanData?.purpose}</span>
+                    <span className="value">{loanData?.purpose || "N/A"}</span>
                   </div>
-                  <div className="summary-item">
-                    <span className="label">Monthly Income:</span>
-                    <span className="value">{loanData?.monthlyIncome}</span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="label">Credit Score:</span>
-                    <span className="value">{loanData?.creditScore}</span>
-                  </div>
+                  {rawMonthlyIncome !== null && (
+                    <div className="summary-item">
+                      <span className="label">Monthly Income:</span>
+                      <span className="value">{monthlyIncome}</span>
+                    </div>
+                  )}
+                  {creditScore !== null && (
+                    <div className="summary-item">
+                      <span className="label">Credit Score:</span>
+                      <span className="value">
+                        {creditScore}
+                        {riskLevel ? ` (${riskLevel} risk)` : ""}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="action-section">
@@ -606,31 +649,28 @@ const LoanDetails = () => {
                       requirements.
                     </p>
                     <div className="approved-amount-section">
-                      <label htmlFor="approvedAmount">Approved Amount *</label>
+                      <label htmlFor="approvedAmount">Loan Amount</label>
+                      {/* Read-only: the amount is fixed when the borrower accepts the
+                          offer (it's what the offer letter and mandate cover) */}
                       <div className="amount-input-wrapper">
                         <span className="currency-symbol">₦</span>
                         <input
-                          type="number"
+                          type="text"
                           id="approvedAmount"
-                          value={approvedAmount}
-                          onChange={(e) => setApprovedAmount(e.target.value)}
-                          placeholder="Enter approved amount"
-                          min="0"
-                          step="1000"
-                          disabled={isProcessing}
-                          required
+                          value={Number(approvedAmount || 0).toLocaleString()}
+                          readOnly
+                          disabled
                         />
                       </div>
                       <small className="amount-help-text">
-                        Maximum requested: {loanData?.amount}
+                        The amount the borrower applied for and accepted. A
+                        different amount needs a new application.
                       </small>
                     </div>
                     <div className="approval-terms">
                       <div className="term-item">
                         <span className="label">Interest Rate:</span>
-                        <span className="value">
-                          {loanData?.productInterestRate}
-                        </span>
+                        <span className="value">{interestRate}</span>
                       </div>
                       <div className="term-item">
                         <span className="label">Tenor:</span>
@@ -640,7 +680,9 @@ const LoanDetails = () => {
                       </div>
                       <div className="term-item">
                         <span className="label">Monthly Repayment:</span>
-                        <span className="value">{monthlyRepayment}</span>
+                        <span className="value">
+                          {monthlyRepayment || "N/A"}
+                        </span>
                       </div>
                     </div>
                   </div>

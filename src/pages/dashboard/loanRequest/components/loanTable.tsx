@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { formatDate } from "../../../../helpers";
 import TablePagination, { usePagination } from "../../../../components/TablePagination";
 import styles from "./loanTable.module.css";
 
@@ -124,13 +125,29 @@ export interface LoanRequest {
   userLastName: string;
 }
 
+// Badge colour per loan status (0 Pending, 1 Processing, 2 Approved, 3 Disbursed, 4 Rejected)
+const statusBadgeClass = (status: number) => {
+  switch (status) {
+    case 0:
+      return "statusPending";
+    case 1:
+      return "statusProcessing";
+    case 2:
+      return "statusApproved";
+    case 3:
+      return "statusDisbursed";
+    case 4:
+      return "statusRejected";
+    default:
+      return "statusOther";
+  }
+};
+
 interface LoanRequestTableProps {
   data: LoanRequest[];
 }
 
 export default function LoanRequestTable({ data }: LoanRequestTableProps) {
-  const [selected, setSelected] = useState<number[]>([]);
-  const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
@@ -139,12 +156,13 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
   // Filter data based on search query, status filter, and date filter
   const filteredData = useMemo(() => {
     return data.filter((loan) => {
-      // Search filter - searches in name, email, BVN, and phone
+      // Search by name (first, last or full) or email
+      const query = searchQuery.trim().toLowerCase();
+      const fullName = `${loan.userFirstName ?? ""} ${loan.userLastName ?? ""}`;
       const searchMatch =
-        searchQuery === "" ||
-        loan.userFirstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.userLastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.userEmail.toLowerCase().includes(searchQuery.toLowerCase());
+        query === "" ||
+        fullName.toLowerCase().includes(query) ||
+        (loan.userEmail ?? "").toLowerCase().includes(query);
 
       // Status filter
       const statusMatch =
@@ -158,26 +176,8 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
   }, [searchQuery, statusFilter, dateFilter, data]);
   const { pageItems, paginationProps } = usePagination(filteredData);
 
-  const isAllSelected =
-    selected.length === filteredData.length && filteredData.length > 0;
-
-  const toggleAll = () => {
-    setSelected(isAllSelected ? [] : filteredData.map((row) => Number(row.id)));
-  };
-
-  const toggleOne = (id: number) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
-
   const handleViewLoan = (row: LoanRequest) => {
     navigate(`/loan-management/details/${row.id}`, { state: { row } });
-    setDropdownOpen(null);
-  };
-
-  const toggleDropdown = (id: number) => {
-    setDropdownOpen(dropdownOpen === id ? null : id);
   };
 
   const exportToCSV = () => {
@@ -194,16 +194,21 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
       loan.userFirstName,
       loan.userLastName,
       loan.userEmail,
-      `₦${loan.amount.toLocaleString()}`,
-      loan.createdAt,
-      loan.status,
+      `₦${Number(loan.amount).toLocaleString()}`,
+      formatDate(loan.createdAt),
+      loan.statusDisplay,
     ]);
 
     const csvContent = [headers, ...csvData]
-      .map((row) => row.map((field) => `"${field}"`).join(","))
+      .map((row) =>
+        row.map((field) => `"${String(field ?? "").replace(/"/g, '""')}"`).join(",")
+      )
       .join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    // The BOM tells Excel the file is UTF-8, otherwise "₦" shows as garbage
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
@@ -217,19 +222,6 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
     document.body.removeChild(link);
   };
 
-  // Close dropdown when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = () => {
-      setDropdownOpen(null);
-    };
-
-    if (dropdownOpen) {
-      document.addEventListener("click", handleClickOutside);
-    }
-
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [dropdownOpen]);
-
   return (
     <div>
       {/* Search and Filter Controls */}
@@ -237,7 +229,7 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
         <div className={styles.searchContainer}>
           <input
             type="text"
-            placeholder="Search by name, email, BVN, or phone..."
+            placeholder="Search by name or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={styles.searchInput}
@@ -286,13 +278,6 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
         <table className={styles.customTable}>
           <thead>
             <tr>
-              <th>
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  onChange={toggleAll}
-                />
-              </th>
               <th>Date Created</th>
               <th>First Name</th>
               <th>Last name</th>
@@ -301,7 +286,6 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
               <th>Loan Amount</th>
               <th>Loan Duration</th>
               <th>Status</th>
-              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -311,13 +295,6 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
                 style={{ cursor: "pointer" }}
                 onClick={() => handleViewLoan(row)}
               >
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(Number(row.id))}
-                    onChange={() => toggleOne(Number(row.id))}
-                  />
-                </td>
                 <td>
                   <div className={styles.adDetails}>
                     {/* <img src={row.image} alt={row.title} /> */}
@@ -342,52 +319,17 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
                 <td>
                   <span
                     className={`${styles.badge} ${
-                      styles[row.statusDisplay.toLowerCase()]
+                      styles[statusBadgeClass(row.status)]
                     }`}
                   >
                     {row.statusDisplay}
                   </span>
                 </td>
-                <td>
-                  <div style={{ position: "relative", zIndex: 2 }}>
-                    <button
-                      className={styles.ellipsisBtn}
-                      aria-label="More options"
-                      style={{ zIndex: 3, position: "relative" }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleDropdown(Number(row.id));
-                      }}
-                    >
-                      ...
-                    </button>
-                    {dropdownOpen === Number(row.id) && (
-                      <div
-                        className={styles.dropdownMenu}
-                        role="menu"
-                        style={{
-                          zIndex: 10,
-                          position: "absolute",
-                          pointerEvents: "auto",
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          className={styles.dropdownItem}
-                          onClick={() => handleViewLoan(row)}
-                          role="menuitem"
-                        >
-                          View Details
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </td>
               </tr>
             ))}
             {filteredData.length === 0 && (
               <tr>
-                <td colSpan={11} className={styles.noResults}>
+                <td colSpan={8} className={styles.noResults}>
                   No loan requests found matching your search criteria.
                 </td>
               </tr>

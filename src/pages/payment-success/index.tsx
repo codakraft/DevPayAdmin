@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompleteFundWalletMutation } from "../../store/apiSlice";
+import { getErrorMessage } from "../../helpers/auth";
+
+const WALLET_PATH = "/wallet";
+
+const goToWallet = (delayMs: number) =>
+  setTimeout(() => window.location.replace(WALLET_PATH), delayMs);
 
 const PaymentSuccess: React.FC = () => {
   const navigate = useNavigate();
   const [completeFundWallet] = useCompleteFundWalletMutation();
   const [status, setStatus] = useState<string>("processing");
   const [message, setMessage] = useState<string>("Processing your payment...");
+  // Paystack couldn't be reached (502): checking again is safe
+  const [canRetry, setCanRetry] = useState(false);
 
   useEffect(() => {
     const processPayment = async () => {
@@ -20,80 +28,71 @@ const PaymentSuccess: React.FC = () => {
         reference,
       });
 
+      // Cancelled or closed checkout (the backend sends Paystack's cancel_action here)
+      if (paymentStatus === "cancelled" || paymentStatus === "failed") {
+        setStatus("error");
+        setMessage(
+          "The payment was cancelled or declined. Your wallet wasn't charged. Redirecting to your wallet..."
+        );
+        goToWallet(4000);
+        return;
+      }
+
       if (!reference) {
         setStatus("error");
-        setMessage("Payment reference not found. Redirecting to wallet...");
-        setTimeout(() => {
-          window.location.replace("/wallet");
-        }, 3000);
+        setMessage("Payment reference not found. Redirecting to your wallet...");
+        goToWallet(3000);
         return;
       }
 
       try {
-        // Call the complete fund wallet endpoint
-        console.log("Calling complete fund wallet with reference:", reference);
         const response = await completeFundWallet({
           paystackReference: reference,
         }).unwrap();
 
-        console.log("Complete fund wallet response:", response);
-
-        // Check for success in multiple ways
+        // A 200 is a credited wallet (including alreadyCompleted after a refresh),
+        // unless the body says otherwise. Older backends return only { message }.
+        // Trust the status fields, never the wording of the message.
+        const transactionStatus = response?.data?.transactionStatus;
         const isSuccess =
-          response.status === "success" ||
-          response.status === "Success" ||
-          response.message?.toLowerCase().includes("successfully") ||
-          response.message?.toLowerCase().includes("completed successfully");
+          response?.success !== false &&
+          (!transactionStatus || transactionStatus.toLowerCase() === "success");
 
         if (isSuccess) {
           setStatus("success");
           setMessage(
             "Payment successful! Your wallet has been updated. Redirecting..."
           );
-
-          // Redirect to wallet page after 3 seconds
-          setTimeout(() => {
-            window.location.replace("/wallet");
-          }, 3000);
+          goToWallet(3000);
         } else {
-          throw new Error(response.message || "Payment verification failed");
+          setStatus("error");
+          setMessage(
+            `${
+              response?.message || "The payment was declined."
+            } Your wallet wasn't credited. Redirecting to your wallet...`
+          );
+          goToWallet(4000);
         }
       } catch (error: any) {
         console.error("Error completing fund wallet:", error);
-
-        // Check if this is actually a success message disguised as an error
-        const errorMessage =
-          error?.data?.message ||
-          error?.message ||
-          "Payment verification failed";
-        const isActuallySuccess =
-          errorMessage.toLowerCase().includes("successfully") ||
-          errorMessage.toLowerCase().includes("completed successfully") ||
-          errorMessage.toLowerCase().includes("success");
-
-        if (isActuallySuccess) {
-          // Treat as success
-          setStatus("success");
+        setStatus("error");
+        if (error?.status === 502) {
+          // Payment provider unreachable: don't redirect, let the user check again
+          setCanRetry(true);
           setMessage(
-            "Payment successful! Your wallet has been updated. Redirecting..."
+            "We couldn't reach the payment provider to confirm this payment. Please try again."
           );
-
-          // Redirect to wallet page after 3 seconds
-          setTimeout(() => {
-            window.location.replace("/wallet");
-          }, 3000);
-        } else {
-          // Actual error
-          setStatus("error");
-          setMessage(
-            `Payment verification failed: ${errorMessage}. Redirecting to wallet...`
-          );
-
-          // Redirect to wallet page after 4 seconds (longer for error cases)
-          setTimeout(() => {
-            window.location.replace("/wallet");
-          }, 4000);
+          return;
         }
+        // 400 with data.transactionStatus = failed/abandoned, 404 unknown, 409 expired
+        const declined = !!error?.data?.data?.transactionStatus;
+        setMessage(
+          `${getErrorMessage(
+            error,
+            declined ? "The payment was declined." : "We couldn't verify this payment."
+          )} Your wallet wasn't credited. Redirecting to your wallet...`
+        );
+        goToWallet(4000);
       }
     };
 
@@ -156,7 +155,7 @@ const PaymentSuccess: React.FC = () => {
           {status === "success"
             ? "Payment Successful!"
             : status === "error"
-            ? "Payment Error"
+            ? "Payment Not Completed"
             : "Processing Payment"}
         </h2>
 
@@ -191,8 +190,48 @@ const PaymentSuccess: React.FC = () => {
             fontSize: "14px",
           }}
         >
-          This page will automatically redirect in a few seconds
+          {canRetry
+            ? "Your payment details are safe; checking again won't charge you twice."
+            : "This page will automatically redirect in a few seconds"}
         </p>
+
+        {canRetry && (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: "8px",
+              marginRight: "8px",
+              padding: "10px 20px",
+              border: "1px solid #3A7145",
+              borderRadius: "6px",
+              background: "white",
+              color: "#3A7145",
+              fontSize: "14px",
+              cursor: "pointer",
+            }}
+          >
+            Try again
+          </button>
+        )}
+        {status !== "processing" && (
+          <button
+            type="button"
+            onClick={() => window.location.replace(WALLET_PATH)}
+            style={{
+              marginTop: "8px",
+              padding: "10px 20px",
+              border: "none",
+              borderRadius: "6px",
+              background: "#3A7145",
+              color: "white",
+              fontSize: "14px",
+              cursor: "pointer",
+            }}
+          >
+            Back to Wallet
+          </button>
+        )}
 
         <style>
           {`@keyframes spin {

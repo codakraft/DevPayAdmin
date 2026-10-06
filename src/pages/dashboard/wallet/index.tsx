@@ -7,7 +7,10 @@ import {
 } from "../../../store/apiSlice";
 import { useAuth } from "../../../context/AuthContext";
 import { Permissions } from "../../../helpers/auth";
+import { parseApiDate } from "../../../helpers";
 import "./wallet.css";
+
+const MIN_FUND_AMOUNT = 1000;
 
 const Wallet: React.FC = () => {
   const [showFundModal, setShowFundModal] = useState(false);
@@ -76,112 +79,46 @@ const Wallet: React.FC = () => {
     }
   }, [refetch, refreshAuth, refetchTransactions]);
 
-  // Mock transaction history
-  const recentTransactions = [
-    {
-      id: 1,
-      type: "credit",
-      amount: 50000,
-      description: "Wallet Funding",
-      date: "2025-07-30",
-      time: "14:30",
-      status: "completed",
-    },
-    {
-      id: 2,
-      type: "debit",
-      amount: 25000,
-      description: "Loan Disbursement - John Doe",
-      date: "2025-07-29",
-      time: "09:15",
-      status: "completed",
-    },
-    {
-      id: 3,
-      type: "credit",
-      amount: 100000,
-      description: "Wallet Funding",
-      date: "2025-07-28",
-      time: "16:45",
-      status: "completed",
-    },
-    {
-      id: 4,
-      type: "debit",
-      amount: 15000,
-      description: "Loan Disbursement - Sarah Johnson",
-      date: "2025-07-27",
-      time: "11:20",
-      status: "completed",
-    },
-    {
-      id: 5,
-      type: "credit",
-      amount: 75000,
-      description: "Loan Repayment - Mike Wilson",
-      date: "2025-07-26",
-      time: "13:10",
-      status: "completed",
-    },
-  ];
-
-  // Get real transactions or fallback to mock data
-  console.log("Raw transactionsData:", transactionsData);
-  console.log("transactionsData.data:", transactionsData?.data);
-
-  let displayTransactions = [];
-
-  // Check if transactionsData has data
-  if (transactionsData?.data && Array.isArray(transactionsData.data)) {
-    displayTransactions = transactionsData.data.map((transaction) => ({
+  // The API sends UTC times without an offset; parseApiDate reads them as UTC
+  const toDisplayTransaction = (transaction: any) => {
+    const createdAt = parseApiDate(transaction.createdAt);
+    return {
       id: transaction.id,
-      type: transaction.transactionType.toLowerCase().includes("funding")
+      type: transaction.transactionType?.toLowerCase().includes("funding")
         ? "credit"
         : "debit",
       amount: transaction.amount,
       description: transaction.description,
-      date: new Date(transaction.createdAt).toLocaleDateString(),
-      time: new Date(transaction.createdAt).toLocaleTimeString([], {
+      date: createdAt.toLocaleDateString(),
+      time: createdAt.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
       }),
-      status: "completed", // Since all transactions in response appear to be completed
+      // Only Paystack fundings carry a status; null means completed
+      status: (transaction.status ?? "Completed").toLowerCase(),
       reference: transaction.paystackReference,
       balanceAfter: transaction.balanceAfter,
-    }));
-  } else if (transactionsData && Array.isArray(transactionsData)) {
-    // Handle case where response is directly an array
-    displayTransactions = transactionsData.map((transaction) => ({
-      id: transaction.id,
-      type: transaction.transactionType.toLowerCase().includes("funding")
-        ? "credit"
-        : "debit",
-      amount: transaction.amount,
-      description: transaction.description,
-      date: new Date(transaction.createdAt).toLocaleDateString(),
-      time: new Date(transaction.createdAt).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      status: "completed",
-      reference: transaction.paystackReference,
-      balanceAfter: transaction.balanceAfter,
-    }));
-  } else {
-    // Fallback to mock data if no real data
-    displayTransactions = recentTransactions;
-  }
+    };
+  };
 
-  console.log("Final displayTransactions:", displayTransactions);
-  console.log("displayTransactions length:", displayTransactions?.length);
+  const rawTransactions: any[] = Array.isArray((transactionsData as any)?.data)
+    ? (transactionsData as any).data
+    : Array.isArray(transactionsData)
+    ? (transactionsData as any)
+    : [];
+  const displayTransactions = rawTransactions.map(toDisplayTransaction);
+
+  const parsedFundAmount = parseFloat(fundAmount);
+  const fundAmountError =
+    fundAmount !== "" &&
+    (isNaN(parsedFundAmount) || parsedFundAmount < MIN_FUND_AMOUNT)
+      ? `The minimum funding amount is ₦${MIN_FUND_AMOUNT.toLocaleString()}.`
+      : null;
 
   const handleFundWallet = async () => {
     // Early validation
-    const amount = parseFloat(fundAmount);
-    if (!fundAmount || amount <= 0 || amount < 1000) {
-      alert("Please enter a valid amount (minimum ₦1,000)");
-      return;
-    }
+    const amount = parsedFundAmount;
+    if (!fundAmount || fundAmountError) return;
 
     if (!walletData?.data?.id) {
       alert(
@@ -440,7 +377,12 @@ const Wallet: React.FC = () => {
                 </div>
               ) : displayTransactions?.length > 0 ? (
                 displayTransactions?.map((transaction) => (
-                  <div key={transaction.id} className="transaction-item">
+                  <div
+                    key={transaction.id}
+                    className={`transaction-item ${
+                      transaction.status !== "completed" ? "not-completed" : ""
+                    }`}
+                  >
                     <div className="transaction-icon">
                       <span className={`icon ${transaction.type}`}>
                         {transaction.type === "credit" ? "↗️" : "↙️"}
@@ -459,7 +401,9 @@ const Wallet: React.FC = () => {
                         {transaction.type === "credit" ? "+" : "-"}
                         {formatCurrency(transaction.amount)}
                       </span>
-                      <span className="transaction-status">
+                      <span
+                        className={`transaction-status status-${transaction.status}`}
+                      >
                         {transaction.status}
                       </span>
                     </div>
@@ -514,15 +458,27 @@ const Wallet: React.FC = () => {
                         value={fundAmount}
                         onChange={(e) => setFundAmount(e.target.value)}
                         placeholder="Enter amount"
-                        min="1000"
+                        min={MIN_FUND_AMOUNT}
                         step="1000"
                         disabled={isFunding}
                         required
+                        aria-invalid={!!fundAmountError}
+                        aria-describedby="fundAmountHelp"
                       />
                     </div>
-                    <small className="fund-help-text">
-                      Minimum funding amount: ₦1,000
-                    </small>
+                    {fundAmountError ? (
+                      <small
+                        id="fundAmountHelp"
+                        className="fund-help-text fund-error-text"
+                        role="alert"
+                      >
+                        {fundAmountError}
+                      </small>
+                    ) : (
+                      <small id="fundAmountHelp" className="fund-help-text">
+                        Minimum funding amount: ₦{MIN_FUND_AMOUNT.toLocaleString()}
+                      </small>
+                    )}
                   </div>
 
                   <div className="quick-amounts">
@@ -559,7 +515,7 @@ const Wallet: React.FC = () => {
                     disabled={
                       isFunding ||
                       !fundAmount ||
-                      parseFloat(fundAmount || "0") < 1000 ||
+                      !!fundAmountError ||
                       !walletData?.data?.id ||
                       !user?.email
                     }

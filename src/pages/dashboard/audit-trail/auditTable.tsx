@@ -1,11 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import styles from "../components/AdsTable.module.css";
-import { useLazyGetAuditTrailQuery } from "../../../store/apiSlice";
+import {
+  useGetAuditCategoriesQuery,
+  useLazyGetAuditTrailQuery,
+} from "../../../store/apiSlice";
 import TablePagination from "../../../components/TablePagination";
+import { parseApiDate } from "../../../helpers";
+
+// Badge colours by category value
+const CATEGORY_COLORS: Record<string, { background: string; color: string }> = {
+  Authentication: { background: "#dcfce7", color: "#166534" },
+  Security: { background: "#fee2e2", color: "#991b1b" },
+  User: { background: "#dbeafe", color: "#1e40af" },
+  Loan: { background: "#fef3c7", color: "#92400e" },
+  Financial: { background: "#ede9fe", color: "#5b21b6" },
+};
+const DEFAULT_CATEGORY_COLOR = { background: "#f3f4f6", color: "#374151" };
 
 export default function AuditTable() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [actionFilter, setActionFilter] = useState("all");
+  // Exact category, filtered on the server so it applies across all pages
+  const [categoryFilter, setCategoryFilter] = useState("");
+  // Fallback when Audit/categories isn't available: categories seen so far
+  const [knownCategories, setKnownCategories] = useState<string[]>([]);
+  const [hasNextPage, setHasNextPage] = useState<boolean | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [auditData, setAuditData] = useState<any[]>([]);
@@ -14,19 +32,38 @@ export default function AuditTable() {
   
   const [getAuditTrail, { isLoading, isFetching }] = useLazyGetAuditTrailQuery();
 
+  const { data: categoriesResponse } = useGetAuditCategoriesQuery();
+  const categoryOptions = useMemo(() => {
+    const fromApi = categoriesResponse?.data;
+    if (Array.isArray(fromApi) && fromApi.length > 0) return fromApi;
+    return knownCategories.map((value) => ({ value, label: value }));
+  }, [categoriesResponse, knownCategories]);
+  const categoryLabels = useMemo(
+    () => new Map(categoryOptions.map((c) => [c.value, c.label])),
+    [categoryOptions]
+  );
+
+  // The person who acted: name, then email (failed logins only have the typed email)
+  const getUserLabel = (row: any): string =>
+    row.userName ||
+    row.userEmail ||
+    (row.userId ? "Unknown user" : "System");
+
   useEffect(() => {
     const fetchAuditTrail = async () => {
       try {
-        const response = await getAuditTrail({ 
-          page: currentPage, 
-          pageSize: pageSize 
+        const response = await getAuditTrail({
+          page: currentPage,
+          pageSize: pageSize,
+          category: categoryFilter || undefined,
         }).unwrap();
         
         // Try different response structures
         // A plain array doesn't say how many records exist in total, so the
         // total stays undefined and "Next" relies on whether this page was full
-        let items = [];
+        let items: any[] = [];
         let total: number | undefined;
+        let nextPage: boolean | undefined;
         
         if (Array.isArray(response)) {
           items = response;
@@ -36,6 +73,7 @@ export default function AuditTable() {
           } else if (Array.isArray(response.data.logs)) {
             items = response.data.logs;
             total = response.data.totalCount;
+            nextPage = response.data.hasNextPage;
           } else if (response.data.items) {
             items = response.data.items;
             total = response.data.totalCount ?? response.data.totalRecords;
@@ -48,30 +86,31 @@ export default function AuditTable() {
         
         setAuditData(items);
         setTotalRecords(total);
+        setHasNextPage(nextPage);
+        setKnownCategories((prev) => {
+          const all = new Set(prev);
+          items.forEach((row: any) => row.category && all.add(row.category));
+          return all.size === prev.length ? prev : Array.from(all).sort();
+        });
       } catch (error) {
         
       }
     };
 
     fetchAuditTrail();
-  }, [currentPage, pageSize, getAuditTrail]);
+  }, [currentPage, pageSize, categoryFilter, getAuditTrail]);
 
   // Filtered data based on search and action filter
   const filteredData = auditData.filter((row) => {
     const searchMatch =
       searchQuery === "" ||
-      (row.userEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (getUserLabel(row).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.userEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       row.action?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       row.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       row.details?.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    let actionMatch = true;
-    if (actionFilter !== "all") {
-      actionMatch = row.action?.toLowerCase().includes(actionFilter.toLowerCase()) ||
-                    row.category?.toLowerCase().includes(actionFilter.toLowerCase());
-    }
-    
-    return searchMatch && actionMatch;
+    return searchMatch;
   });
 
   const exportToCSV = () => {
@@ -83,10 +122,10 @@ export default function AuditTable() {
       headers.join(","), // Header row
       ...filteredData.map((row: any) =>
         [
-          `"${new Date(row.timestamp).toLocaleString()}"`,
-          `"${row.userEmail || 'N/A'}"`,
+          `"${parseApiDate(row.timestamp).toLocaleString()}"`,
+          `"${getUserLabel(row)}"`,
           `"${row.action || 'N/A'}"`,
-          `"${row.category || 'N/A'}"`,
+          `"${categoryLabels.get(row.category) || row.category || 'N/A'}"`,
           `"${row.details || 'N/A'}"`,
           `"${row.isSuccess ? 'Success' : 'Failed'}"`,
         ].join(",")
@@ -94,7 +133,8 @@ export default function AuditTable() {
     ].join("\n");
 
     // Create and download CSV file
-    const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+    // BOM so Excel reads the file as UTF-8
+    const blob = new Blob(["\uFEFF" + csvData], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
@@ -123,18 +163,21 @@ export default function AuditTable() {
 
         <div className={styles.filtersContainer}>
           <select
-            value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
+            value={categoryFilter}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            aria-label="Filter by category"
             className={styles.filterSelect}
             style={{ marginRight: 12 }}
           >
-            <option value="all">All Actions</option>
-            <option value="login">Logins</option>
-            <option value="logout">Logouts</option>
-            <option value="security">Security</option>
-            <option value="loan">Loan Actions</option>
-            <option value="user">User Actions</option>
-            <option value="admin">Admin Actions</option>
+            <option value="">All categories</option>
+            {categoryOptions.map((category) => (
+              <option key={category.value} value={category.value}>
+                {category.label}
+              </option>
+            ))}
           </select>
           
           <button
@@ -186,7 +229,7 @@ export default function AuditTable() {
                     <td>
                       <div className={styles.adDetails}>
                         <div>
-                          <p>{new Date(row.timestamp).toLocaleString('en-US', {
+                          <p>{parseApiDate(row.timestamp).toLocaleString('en-US', {
                             year: 'numeric',
                             month: 'short',
                             day: '2-digit',
@@ -197,7 +240,14 @@ export default function AuditTable() {
                         </div>
                       </div>
                     </td>
-                    <td>{row.userEmail || 'N/A'}</td>
+                    <td>
+                      {getUserLabel(row)}
+                      {row.userEmail && getUserLabel(row) !== row.userEmail && (
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          {row.userEmail}
+                        </div>
+                      )}
+                    </td>
                     <td>
                       <span style={{ 
                         fontWeight: '500',
@@ -208,14 +258,13 @@ export default function AuditTable() {
                     </td>
                     <td>
                       <span className={`${styles.badge}`} style={{
-                        background: row.category === 'Security' ? '#dbeafe' : '#e0e7ff',
-                        color: row.category === 'Security' ? '#1e40af' : '#4338ca',
+                        ...(CATEGORY_COLORS[row.category] ?? DEFAULT_CATEGORY_COLOR),
                         padding: '4px 12px',
                         borderRadius: '12px',
                         fontSize: '12px',
                         fontWeight: '600'
                       }}>
-                        {row.category || 'General'}
+                        {categoryLabels.get(row.category) || row.category || 'General'}
                       </span>
                     </td>
                     <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -251,7 +300,7 @@ export default function AuditTable() {
               page={currentPage}
               pageSize={pageSize}
               total={totalRecords}
-              hasNextPage={auditData.length === pageSize}
+              hasNextPage={hasNextPage ?? auditData.length === pageSize}
               disabled={isFetching}
               onPageChange={setCurrentPage}
               onPageSizeChange={(size) => {

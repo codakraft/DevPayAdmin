@@ -400,10 +400,20 @@ export const apiSlice = createApi({
         method: "POST",
       }),
     }),
-    getAuditTrail: builder.query<any, { page?: number; pageSize?: number }>({
-      query: ({ page = 1, pageSize = 50 }) => ({
-        url: `Audit?page=${page}&pageSize=${pageSize}`,
+    // Filter values and display labels, in display order (needs audit.view)
+    getAuditCategories: builder.query<{ success: boolean; data: { value: string; label: string }[] }, void>({
+      query: () => ({
+        url: `Audit/categories`,
         method: "GET",
+      }),
+    }),
+    // Paged: `data` is { logs, totalCount, page, pageSize, totalPages, hasNextPage }.
+    // pageSize is capped at 100 by the API.
+    getAuditTrail: builder.query<any, { page?: number; pageSize?: number; category?: string }>({
+      query: ({ page = 1, pageSize = 50, category }) => ({
+        url: `Audit`,
+        method: "GET",
+        params: { page, pageSize, ...(category ? { category } : {}) },
       }),
     }),
   }),
@@ -436,6 +446,7 @@ export const {
   useDisburseLoanMutation,
   useLazyGetDisbursementsQuery,
   useLazyGetAuditTrailQuery,
+  useGetAuditCategoriesQuery,
   useGetRolesQuery,
   useCreateUserMutation,
   useChangePasswordMutation,
