@@ -539,3 +539,24 @@
     grid-template-columns: 1fr;
   }
 }
+
+.fund-error-text {
+  color: #dc2626;
+}
+
+/* Pending (checkout never finished) and failed fundings didn't move money */
+.transaction-item.not-completed {
+  opacity: 0.6;
+}
+
+.transaction-item.not-completed .amount {
+  text-decoration: line-through;
+}
+
+.transaction-status.status-pending {
+  color: #b45309;
+}
+
+.transaction-status.status-failed {
+  color: #dc2626;
+}

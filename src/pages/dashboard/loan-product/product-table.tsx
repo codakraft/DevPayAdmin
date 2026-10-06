@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import TablePagination, {
+  usePagination,
+} from "../../../components/TablePagination";
 import styles from "./productTable.module.css";
 import { useAuth } from "../../../context/AuthContext";
 import { Permissions } from "../../../helpers/auth";
@@ -53,6 +56,8 @@ interface LoanData {
 // const UsersTable: React.FC<UsersTableProps> = ({ users }) => {
 // export default function LoanTable() {
 const LoanTable: React.FC<LoanData> = ({ data }) => {
+  const rows = useMemo(() => data ?? [], [data]);
+  const { pageItems, paginationProps } = usePagination(rows);
   const [selected, setSelected] = useState<string[]>([]);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [tableData, setTableData] = useState(dummyData);
@@ -117,111 +122,92 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
   }, [menuOpenId]);
 
   return (
-    <table className={styles.customTable}>
-      <thead>
-        <tr>
-          <th>
-            <input
-              type="checkbox"
-              checked={isAllSelected}
-              onChange={toggleAll}
-            />
-          </th>
-          <th>Product</th>
-          <th>ID</th>
-          <th>Interest Rate</th>
-          <th>Loan Amount Range</th>
-          <th>Loan Tenor</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {data?.map((row) => (
-          <tr key={row.id}>
-            <td>
-              <input
-                type="checkbox"
-                checked={selected.includes(row.id)}
-                onChange={() => toggleOne(row.id)}
-              />
-            </td>
-            <td>
-              <div className={styles.adDetails}>
-                {/* <img src={row.image} alt={row.title} /> */}
-                <div>
-                  {/* <strong>{row.dateCreated}</strong> */}
-                  <p>{row.name}</p>
-                </div>
-              </div>
-            </td>
-            <td>{row.shortName}</td>
-            <td>{row.interestRate}%</td>
-            <td>
-              {row.minAmount} - {row.maxAmount}
-            </td>
-            <td>
-              {row.minTenor} - {row.maxTenor}
-            </td>
-            <td>
-              <span
-                className={
-                  row.companyId === "Active"
-                    ? styles.badge
-                    : styles.inactivebadge
-                }
-              >
-                {row?.isActive ? "Active" : "Inactive"}
-              </span>
-            </td>
-            <td>
-              <div style={{ position: "relative" }}>
-                <button
-                  className={styles.ellipsisBtn}
-                  aria-label="More options"
-                  onClick={() =>
-                    setMenuOpenId(menuOpenId === row.id ? null : row.id)
-                  }
-                  type="button"
-                >
-                  ...
-                </button>
-                {menuOpenId === row.id && (
-                  <div
-                    className="ellipsis-menu"
-                    style={{
-                      position: "absolute",
-                      right: 0,
-                      top: "100%",
-                      background: "#fff",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                      borderRadius: 6,
-                      zIndex: 10,
-                      minWidth: 120,
-                      padding: 0,
-                    }}
+    <>
+      <div className="table-scroll">
+        <table className={styles.customTable}>
+          <thead>
+            <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={toggleAll}
+                />
+              </th>
+              <th>Product</th>
+              <th>ID</th>
+              <th>Interest Rate</th>
+              <th>Loan Amount Range</th>
+              <th>Loan Tenor</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.map((row) => (
+              <tr key={row.id}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(row.id)}
+                    onChange={() => toggleOne(row.id)}
+                  />
+                </td>
+                <td>
+                  <div className={styles.adDetails}>
+                    {/* <img src={row.image} alt={row.title} /> */}
+                    <div>
+                      {/* <strong>{row.dateCreated}</strong> */}
+                      <p>{row.name}</p>
+                    </div>
+                  </div>
+                </td>
+                <td>{row.shortName}</td>
+                <td>{row.interestRate}%</td>
+                <td>
+                  {row.minAmount} - {row.maxAmount}
+                </td>
+                <td>
+                  {row.minTenor} - {row.maxTenor}
+                </td>
+                <td>
+                  <span
+                    className={
+                      row.companyId === "Active"
+                        ? styles.badge
+                        : styles.inactivebadge
+                    }
                   >
+                    {row?.isActive ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td>
+                  <div style={{ position: "relative" }}>
                     <button
-                      style={{
-                        display: "block",
-                        width: "100%",
-                        padding: "10px 16px",
-                        background: "none",
-                        border: "none",
-                        textAlign: "left",
-                        cursor: "pointer",
-                        fontSize: 14,
-                      }}
-                      onClick={() => {
-                        setMenuOpenId(null);
-                        // handle view logic here
-                        alert(`View ${row.id}`);
-                      }}
+                      className={styles.ellipsisBtn}
+                      aria-label="More options"
+                      onClick={() =>
+                        setMenuOpenId(menuOpenId === row.id ? null : row.id)
+                      }
+                      type="button"
                     >
-                      View
+                      ...
                     </button>
-                    {canManageProducts && (
-                      <>
+                    {menuOpenId === row.id && (
+                      <div
+                        className="ellipsis-menu"
+                        style={{
+                          position: "absolute",
+                          right: 0,
+                          top: "100%",
+                          background: "#fff",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                          borderRadius: 6,
+                          zIndex: 10,
+                          minWidth: 120,
+                          padding: 0,
+                        }}
+                      >
                         <button
                           style={{
                             display: "block",
@@ -235,43 +221,67 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
                           }}
                           onClick={() => {
                             setMenuOpenId(null);
-                            navigate(`/content-management/edit/${row.id}`, {
-                              state: { product: row },
-                            });
+                            // handle view logic here
+                            alert(`View ${row.id}`);
                           }}
                         >
-                          Edit
+                          View
                         </button>
-                        <button
-                          style={{
-                            display: "block",
-                            width: "100%",
-                            padding: "10px 16px",
-                            background: "none",
-                            border: "none",
-                            textAlign: "left",
-                            cursor: "pointer",
-                            fontSize: 14,
-                            color: "#d32f2f",
-                          }}
-                          onClick={() => {
-                            setMenuOpenId(null);
-                            // handle disable logic here
-                            alert(`Disable ${row.id}`);
-                          }}
-                        >
-                          Disable
-                        </button>
-                      </>
+                        {canManageProducts && (
+                          <>
+                            <button
+                              style={{
+                                display: "block",
+                                width: "100%",
+                                padding: "10px 16px",
+                                background: "none",
+                                border: "none",
+                                textAlign: "left",
+                                cursor: "pointer",
+                                fontSize: 14,
+                              }}
+                              onClick={() => {
+                                setMenuOpenId(null);
+                                navigate(`/content-management/edit/${row.id}`, {
+                                  state: { product: row },
+                                });
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              style={{
+                                display: "block",
+                                width: "100%",
+                                padding: "10px 16px",
+                                background: "none",
+                                border: "none",
+                                textAlign: "left",
+                                cursor: "pointer",
+                                fontSize: 14,
+                                color: "#d32f2f",
+                              }}
+                              onClick={() => {
+                                setMenuOpenId(null);
+                                // handle disable logic here
+                                alert(`Disable ${row.id}`);
+                              }}
+                            >
+                              Disable
+                            </button>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <TablePagination {...paginationProps} />
+    </>
   );
 };
 

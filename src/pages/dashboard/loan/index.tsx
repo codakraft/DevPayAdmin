@@ -6,6 +6,7 @@ import styles from "../adsManagement/createAdd.module.css";
 import AllLoanTable from "../components/AllLoansTable";
 import React, { useEffect, useState } from "react";
 import { useLazyGetLoansQuery } from "../../../store/apiSlice";
+import { fetchAllPages, toPageResult } from "../../../helpers/pagination";
 
 export default function AllLoan() {
   const [getLoans, { isLoading: isLoadingCompanyLoans }] =
@@ -16,13 +17,17 @@ export default function AllLoan() {
   const fetchLoans = React.useCallback(
     async (statusValue: string) => {
       try {
-        const response = await getLoans({
-          status: Number(statusValue),
-        }).unwrap();
-        console.log("Fetched loansAll:", response.data);
-        if (response?.data) {
-          setData(response.data.loans);
-        }
+        const loans = await fetchAllPages(async (page, pageSize) =>
+          toPageResult<any>(
+            await getLoans({
+              status: Number(statusValue),
+              page,
+              pageSize,
+            }).unwrap(),
+            "loans"
+          )
+        );
+        setData(loans);
       } catch (error) {
         console.error("Failed to fetch loans:", error);
       }

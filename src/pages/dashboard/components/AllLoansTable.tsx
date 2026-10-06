@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import TablePagination, { usePagination } from "../../../components/TablePagination";
 import styles from "./AdsTable.module.css";
 import { LoanRequest } from "../loanRequest/components/loanTable";
 
@@ -155,6 +156,7 @@ export default function AllLoanTable({
       return searchMatch && statusMatch && dateMatch;
     });
   }, [searchQuery, statusFilter, dateFilter, data]);
+  const { pageItems, paginationProps } = usePagination(filteredData);
 
   // Notify parent when statusFilter changes
   React.useEffect(() => {
@@ -261,84 +263,87 @@ export default function AllLoanTable({
         </div>
       </div>
 
-      <table className={styles.customTable}>
-        <thead>
-          <tr>
-            <th>
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={toggleAll}
-              />
-            </th>
-            <th>Date Created</th>
-            <th>First Name</th>
-            <th>Last name</th>
-            <th>Email</th>
-            <th>Loan Purpose</th>
-            <th>Loan Amount</th>
-            <th>Loan Duration</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredData.map((row) => (
-            <tr
-              key={`${row.id}-${row.userFirstName}-${row.userLastName}`}
-              onClick={() => handleRowClick(row)}
-              className={styles.clickableRow}
-            >
-              <td>
+      <div className="table-scroll">
+        <table className={styles.customTable}>
+          <thead>
+            <tr>
+              <th>
                 <input
                   type="checkbox"
-                  checked={selected.includes(Number(row.id))}
-                  onChange={() => toggleOne(Number(row.id))}
+                  checked={isAllSelected}
+                  onChange={toggleAll}
                 />
-              </td>
-              <td>
-                <div className={styles.adDetails}>
-                  {/* <img src={row.image} alt={row.title} /> */}
-                  <div>
-                    {/* <strong>{row.dateCreated}</strong> */}
-                    <p>{row.createdAt}</p>
+              </th>
+              <th>Date Created</th>
+              <th>First Name</th>
+              <th>Last name</th>
+              <th>Email</th>
+              <th>Loan Purpose</th>
+              <th>Loan Amount</th>
+              <th>Loan Duration</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.map((row) => (
+              <tr
+                key={`${row.id}-${row.userFirstName}-${row.userLastName}`}
+                onClick={() => handleRowClick(row)}
+                className={styles.clickableRow}
+              >
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(Number(row.id))}
+                    onChange={() => toggleOne(Number(row.id))}
+                  />
+                </td>
+                <td>
+                  <div className={styles.adDetails}>
+                    {/* <img src={row.image} alt={row.title} /> */}
+                    <div>
+                      {/* <strong>{row.dateCreated}</strong> */}
+                      <p>{row.createdAt}</p>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td>{row.userFirstName}</td>
-              <td>{row.userLastName}</td>
-              <td>{row.userEmail}</td>
-              <td>{row.purpose}</td>
-              <td>₦{row.amount.toLocaleString()}</td>
-              <td>{row.durationInMonths} Months</td>
-              <td>
-                <span
-                  className={`${styles.badge} ${
-                    styles[row.statusDisplay.toLowerCase()]
-                  }`}
-                >
-                  {row.statusDisplay}
-                </span>
-              </td>
-              <td>
-                <button
-                  className={styles.ellipsisBtn}
-                  aria-label="More options"
-                >
-                  ...
-                </button>
-              </td>
-            </tr>
-          ))}
-          {filteredData.length === 0 && (
-            <tr>
-              <td colSpan={11} className={styles.noResults}>
-                No loans found matching your search criteria.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                </td>
+                <td>{row.userFirstName}</td>
+                <td>{row.userLastName}</td>
+                <td>{row.userEmail}</td>
+                <td>{row.purpose}</td>
+                <td>₦{row.amount.toLocaleString()}</td>
+                <td>{row.durationInMonths} Months</td>
+                <td>
+                  <span
+                    className={`${styles.badge} ${
+                      styles[row.statusDisplay.toLowerCase()]
+                    }`}
+                  >
+                    {row.statusDisplay}
+                  </span>
+                </td>
+                <td>
+                  <button
+                    className={styles.ellipsisBtn}
+                    aria-label="More options"
+                  >
+                    ...
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {filteredData.length === 0 && (
+              <tr>
+                <td colSpan={11} className={styles.noResults}>
+                  No loans found matching your search criteria.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <TablePagination {...paginationProps} />
     </div>
   );
 }

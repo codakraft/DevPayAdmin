@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./styles.css";
+import TablePagination from "../../../../components/TablePagination";
 import { AdminUser, AdminUserQueryParams } from "../../../../types/types";
 import {
   useGetAdminUserQuery,
@@ -70,7 +71,6 @@ const AdminTable: React.FC = () => {
 
   const users = data?.data?.users ?? [];
   const totalCount = data?.data?.totalCount ?? 0;
-  const totalPages = Math.max(data?.data?.totalPages ?? 1, 1);
   const hasFilters = Boolean(roleFilter || createdFrom || createdTo);
 
   const handleRowClick = (user: AdminUser) => {
@@ -255,7 +255,11 @@ const AdminTable: React.FC = () => {
                   </div>
                 </td>
                 <td>{user.email}</td>
-                <td>{formatUserRoles(user)}</td>
+                <td>
+                  {formatUserRoles(user) || (
+                    <span className="status-badge inactive">No role</span>
+                  )}
+                </td>
                 <td>
                   <span
                     className={`status-badge ${
@@ -360,40 +364,14 @@ const AdminTable: React.FC = () => {
         </div>
       )}
 
-      <div className="table-pagination">
-        <div className="pagination-summary">
-          Showing {totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
-          {Math.min(currentPage * pageSize, totalCount)} of {totalCount} records
-        </div>
-        <div className="pagination-controls">
-          <select
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-          >
-            <option value={10}>10 per page</option>
-            <option value={25}>25 per page</option>
-            <option value={50}>50 per page</option>
-            <option value={100}>100 per page</option>
-          </select>
-          <button
-            className="pagination-btn"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage <= 1 || isFetching}
-          >
-            Previous
-          </button>
-          <span className="pagination-current">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            className="pagination-btn"
-            onClick={() => setCurrentPage((prev) => prev + 1)}
-            disabled={!data?.data?.hasNextPage || isFetching}
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      <TablePagination
+        page={currentPage}
+        pageSize={pageSize}
+        total={totalCount}
+        disabled={isFetching}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+      />
     </div>
   );
 };

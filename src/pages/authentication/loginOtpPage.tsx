@@ -3,7 +3,23 @@ import { useLocation, useNavigate } from "react-router-dom";
 import "./LoginPage.css";
 import logoImage from "../../assets/logoIcon.png";
 import { useAuth } from "../../context/AuthContext";
-import { getErrorMessage } from "../../helpers/auth";
+import {
+  getErrorMessage,
+  isOtpDeadEnd,
+  setLoginNotice,
+} from "../../helpers/auth";
+
+const OTP_LENGTH = 6;
+
+// Adds "N attempts remaining" when the API reports it as a field but the
+// message doesn't already say so
+const getOtpErrorMessage = (err: any) => {
+  const message = getErrorMessage(err, "OTP verification failed. Please try again.");
+  const remaining =
+    err?.data?.remainingAttempts ?? err?.data?.data?.remainingAttempts;
+  if (typeof remaining !== "number" || /attempt/i.test(message)) return message;
+  return `${message} ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`;
+};
 
 const LoginOtpPage: React.FC = () => {
   const [otp, setOtp] = useState("");
@@ -52,8 +68,8 @@ const LoginOtpPage: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    if (!otp || otp.length < 4) {
-      setError("Please enter the OTP sent to your email.");
+    if (otp.length !== OTP_LENGTH) {
+      setError(`Please enter the ${OTP_LENGTH}-digit OTP sent to your email.`);
       return;
     }
 
@@ -76,9 +92,19 @@ const LoginOtpPage: React.FC = () => {
       // Authenticate and redirect to dashboard
       refreshAuth();
       setShouldRedirect(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("OTP verification failed:", err);
-      setError(getErrorMessage(err, "OTP verification failed. Please try again."));
+      // Locked, expired or unknown session: this login attempt is over
+      if (isOtpDeadEnd(err) || err?.status === 404) {
+        localStorage.removeItem("devpay_admin_session_id");
+        localStorage.removeItem("devpay_admin_otp_sent_to");
+        setLoginNotice(
+          getErrorMessage(err, "Your code has expired. Please log in again."),
+        );
+        navigate("/login", { replace: true });
+        return;
+      }
+      setError(getOtpErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -108,10 +134,16 @@ const LoginOtpPage: React.FC = () => {
                   type="text"
                   id="otp"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
+                  onChange={(e) =>
+                    setOtp(e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH))
+                  }
                   required
                   disabled={authLoading || isLoading}
                   inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={OTP_LENGTH}
+                  autoComplete="one-time-code"
+                  placeholder="6-digit code"
                 />
               </div>
 

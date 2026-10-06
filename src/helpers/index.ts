@@ -30,14 +30,24 @@ export const formatCurrency = (amount: number, currency: string = '₦'): string
  * @param date - Date string or Date object
  * @returns Formatted date string
  */
+/**
+ * Parses an API timestamp. The API sends UTC times without an offset
+ * (e.g. 2026-03-09T19:43:08.5413631), which browsers would read as local time
+ * (an hour behind in Lagos), so treat offset-less times as UTC. Also trims the
+ * 7 fractional digits, which not every browser parses.
+ */
+export const parseApiDate = (value: string | Date): Date => {
+  if (value instanceof Date) return value;
+  let text = value.trim().replace(/(\.\d{3})\d+/, '$1');
+  const hasTime = /T\d{2}:\d{2}/.test(text);
+  const hasOffset = /(Z|[+-]\d{2}:?\d{2})$/i.test(text);
+  if (hasTime && !hasOffset) text += 'Z';
+  return new Date(text);
+};
+
 export const formatDate = (date: string | Date | null | undefined): string => {
   if (!date) return '-';
-  // Backend timestamps can carry 7 fractional digits (e.g. 2026-03-09T19:43:08.5413631),
-  // which not every browser parses — trim to milliseconds first.
-  const dateObj =
-    typeof date === 'string'
-      ? new Date(date.replace(/(\.\d{3})\d+/, '$1'))
-      : date;
+  const dateObj = parseApiDate(date);
   if (isNaN(dateObj.getTime())) return '-';
   return dateObj.toLocaleDateString('en-US', {
     year: 'numeric',
@@ -101,4 +111,21 @@ export const getPasswordError = (password: string): string => {
 export const truncateText = (text: string, maxLength: number): string => {
   if (text.length <= maxLength) return text;
   return `${text.substring(0, maxLength)}...`;
+};
+
+/**
+ * Formats an API timestamp as date and time in the viewer's time zone
+ * @returns e.g. "Mar 9, 2026, 8:43 PM", or "-" when missing/invalid
+ */
+export const formatDateTime = (date: string | Date | null | undefined): string => {
+  if (!date) return '-';
+  const dateObj = parseApiDate(date);
+  if (isNaN(dateObj.getTime())) return '-';
+  return dateObj.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 };

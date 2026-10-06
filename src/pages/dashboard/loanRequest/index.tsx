@@ -10,6 +10,7 @@ import {
   useLazyGetLoansQuery,
 } from "../../../store/apiSlice";
 import { useEffect, useState } from "react";
+import { fetchAllPages, toPageResult } from "../../../helpers/pagination";
 
 export default function LoanRequestPage() {
   const [getLoans, { isLoading: isLoadingCompanyLoans }] =
@@ -19,11 +20,13 @@ export default function LoanRequestPage() {
 
   const fetchLoans = async () => {
     try {
-      const response = await getLoans({ status: 0 }).unwrap();
-     
-      if (response?.data) {
-        setData(response.data.loans);
-      }
+      const loans = await fetchAllPages(async (page, pageSize) =>
+        toPageResult<any>(
+          await getLoans({ status: 0, page, pageSize }).unwrap(),
+          "loans"
+        )
+      );
+      setData(loans);
     } catch (error) {
       console.error("Failed to fetch loans:", error);
     }

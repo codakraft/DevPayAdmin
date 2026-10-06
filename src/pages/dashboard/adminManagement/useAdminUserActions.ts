@@ -15,8 +15,13 @@ import { useAuth } from "../../../context/AuthContext";
 import { AdminUser } from "../../../types/types";
 import useRoleOptions from "./useRoleOptions";
 
-export const userRoleNames = (user: AdminUser) =>
-  user.roles?.length ? user.roles.map((r) => r.name) : [user.role];
+// `role` is omitted when the user has no roles, so this can be empty
+export const userRoleNames = (user: AdminUser): string[] =>
+  user.roles?.length
+    ? user.roles.map((r) => r.name)
+    : user.role
+    ? [user.role]
+    : [];
 
 // Role and status changes for an admin user, shared by the table and the profile page
 const useAdminUserActions = () => {

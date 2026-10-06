@@ -1,6 +1,7 @@
 import UnpaidTable from "../components/UnpaidTable";
 import styles from "../adsManagement/createAdd.module.css";
 import { useLazyGetLoansQuery } from "../../../store/apiSlice";
+import { fetchAllPages, toPageResult } from "../../../helpers/pagination";
 import { useEffect, useState } from "react";
 
 export default function UnpaidLoan() {
@@ -11,11 +12,13 @@ export default function UnpaidLoan() {
 
   const fetchLoans = async () => {
     try {
-      const response = await getLoans({ status: 6 }).unwrap();
-     
-      if (response?.data) {
-        setData(response.data.loans);
-      }
+      const loans = await fetchAllPages(async (page, pageSize) =>
+        toPageResult<any>(
+          await getLoans({ status: 6, page, pageSize }).unwrap(),
+          "loans"
+        )
+      );
+      setData(loans);
     } catch (error) {
       console.error("Failed to fetch loans:", error);
     }

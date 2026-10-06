@@ -140,8 +140,8 @@ export interface AdminUser {
   isActive: boolean;
   createdAt: string;
   lastLoginAt: string | null;
-  // First role only, kept for compatibility; prefer `roles`
-  role: string;
+  // First role only, kept for compatibility; prefer `roles`. Omitted when the user has no roles.
+  role?: string;
   roles?: { id: string; name: string }[];
 }
 
@@ -186,14 +186,17 @@ export interface CompleteFundWalletRequestData {
   paystackReference: string;
 }
 
+// Older backends return only { message } on success
 export interface CompleteFundWalletResponse {
-  status: string;
+  success?: boolean;
   message: string;
-  data: {
+  data?: {
+    // Paystack's status; only "success" when the wallet was credited
     transactionStatus: string;
-    amount: number;
-    reference: string;
-    walletBalance: number;
+    amount?: number;
+    balance?: number;
+    // The reference was already credited (e.g. the page was refreshed)
+    alreadyCompleted?: boolean;
   };
 }
 
@@ -206,6 +209,8 @@ export interface WalletTransaction {
   description: string;
   paystackReference?: string;
   createdAt: string;
+  // Paystack fundings only: Pending until paid. null for everything else (completed).
+  status?: "Pending" | "Completed" | "Failed" | null;
 }
 
 export interface WalletTransactionsResponse {

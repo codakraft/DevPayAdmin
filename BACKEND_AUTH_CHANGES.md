@@ -647,3 +647,390 @@ deploy, your step 2 should return `409 "User is already active"`.
   The placeholder Branch field and the "Disable" button were removed: there's no branch on the user and no separate disable action.
 - ~~The `/user-management/*` pages had no permission guard.~~ They're now guarded with `users.view` (see the follow-up above).
 
+
+---
+
+## QA round 2: frontend changes and backend requests (2026-10-05)
+
+### Done on the frontend
+
+| QA item | Change |
+|---|---|
+| Notification bell / messages | Removed from the header (no backend for them). |
+| Session timeout | 15 minutes without activity (shared across tabs) → 60-second "Are you still there?" warning → `admin/logout` and redirect to login with a notice. A tab reopened after the timeout is signed out on load. |
+| Pagination | Loan Requests, Loans (All / Unpaid / Ongoing Collections), Loan Product Content and Audit Trail. Loans and products load every page (`Page`/`PageSize`) so search and filters still cover all records, then paginate in the table. Audit Trail pages on the server. |
+| Admin name dropdown arrow | Removed. The header now shows the signed-in admin's name instead of a hard-coded "Admin". |
+| Forgot password | Shows "Please contact your administrator to reset your password." There's no reset endpoint yet (request 1). |
+| OTP field | Digits only, exactly 6. |
+| OTP attempts message | Shows `remainingAttempts` when the response includes it as a field. The inconsistent message itself comes from the API (request 2). |
+| Mobile | The sidebar becomes a slide-in menu on small screens. Tables scroll sideways. Dashboard grids, page headers, filters and the login page stack on phones. |
+
+Also fixed: `company/loans?Status=0` was never sent (status `0` was treated as "no filter"),
+so **Loan Requests listed every loan instead of pending ones**. It now sends `Status=0`.
+
+### Requests for the backend
+
+1. **Admin forgot / reset password.** There's no admin endpoint for this. Suggested:
+   - `POST admin/forgot-password { email }`: always 200 (don't reveal whether the email exists), emails a reset link or OTP.
+   - `POST admin/reset-password { email, token|otp, newPassword, confirmNewPassword }`: same password rule as `change-password`, revokes existing sessions.
+
+   Tell us the link format (e.g. `https://<admin-host>/reset-password?token=…&email=…`) and we'll build the pages.
+2. **OTP attempts should be reported consistently.** QA: after the first wrong OTP, the message said 4 attempts
+   remained; after the second it only said "Invalid OTP". Please return the same shape every time on
+   `verify-login` failures, e.g.
+   `{ "success": false, "message": "Invalid OTP. 3 attempts remaining.", "code": "OTP_INVALID", "data": { "remainingAttempts": 3 } }`,
+   and `code: "OTP_LOCKED"` (or similar) when no attempts remain. The frontend already reads
+   `remainingAttempts` from `data` or the top level.
+3. **Session timeout policy.** The frontend signs users out after 15 minutes of inactivity. Is there a
+   backend requirement (idle or absolute session length) we should match? With 7-day refresh tokens,
+   the server currently allows a session to continue for a week as long as a tab refreshes it.
+4. **Consistent paging metadata on list endpoints.** `company/users` returns
+   `{ page, pageSize, totalCount, totalPages, hasNextPage }`. Please return the same on `company/loans`,
+   `company/loan-products` and `Audit`. Also add `Page`/`PageSize` to `loan/disbursements`, which has
+   none. Without `hasNextPage`/`totalCount`, the frontend has to guess when it has reached the last page.
+   If the API ever caps `PageSize` below what we ask for, without that metadata we'd stop early.
+
+### Backend responses to QA round 2 (2026-10-05)
+
+These are local on the backend and not deployed yet. We'll post here when they're on staging.
+
+1. **Admin forgot / reset password: done, using an emailed 6-digit code (not a link).**
+   Both endpoints are anonymous.
+   - `POST admin/forgot-password { email }` always returns `200`
+     "If an account exists for this email, a reset code has been sent." The code expires in
+     **10 minutes**. At most 3 codes can be requested per email per 5 minutes; past that, the
+     response is still `200` but no email is sent. A new code invalidates the previous one.
+   - `POST admin/reset-password { email, otp, newPassword, confirmNewPassword }` returns `200`
+     "Password reset successfully. Please log in with your new password."
+     The password rule is the same as `change-password` (8+ chars, upper, lower, digit, special).
+     A password that breaks it returns `400` "Failed to reset password: …" **without using up
+     the code**, so the user can fix it and resubmit the same code. A successful reset:
+     - signs the user out everywhere (all access and refresh tokens die)
+     - clears `requiresPasswordChange`
+     - returns no tokens, so send the user to the login page
+   - OTP errors use the same shape as `verify-login` (item 2), and the message ends with
+     "Please request a new code."
+   - Pages to build: an email form that calls `forgot-password` and then moves on to a
+     "code + new password" form that calls `reset-password`. Replace the "contact your
+     administrator" message.
+
+2. **OTP attempts: fixed, and the limit is now 3.** Every failed `verify-login` (and
+   `reset-password`) OTP now returns `400` with a `code` and `data.remainingAttempts`, every time:
+
+   | `code` | When | `message` | `data.remainingAttempts` |
+   |---|---|---|---|
+   | `OTP_INVALID` | Wrong code, tries left | "Invalid OTP. 2 attempts remaining." / "…1 attempt remaining." | 2 or 1 |
+   | `OTP_LOCKED` | 3rd wrong code (on `reset-password`, also any later try with that code) | "Too many failed attempts. Please log in again to get a new code." | 0 |
+   | `OTP_EXPIRED` | Code expired, already used or never issued | "This code has expired or is no longer valid. Please log in again to get a new code." | 0 |
+
+   On `verify-login`, `OTP_LOCKED` and `OTP_EXPIRED` also end the login session, so send the
+   user back to the login page. A retry with the same `sessionId` returns `404`
+   "Invalid or expired session". Match on `code`, not on the message. The cause of QA's
+   bare "Invalid OTP" was that every failure except a plain wrong code was collapsed into
+   that message without a count.
+
+3. **Session timeout:** no backend change. The frontend's 15-minute idle sign-out stands.
+
+4. **Paging metadata.**
+   - `company/loans` and `company/loan-products` **already** return `totalCount`, `page`,
+     `pageSize`, `totalPages`, `hasNextPage` and `hasPreviousPage` next to `loans` /
+     `loanProducts` in `data`. No backend change; please read them from there.
+   - **`Audit` (breaking):** it used to return a bare array. It now returns the usual envelope:
+     `{ success, message, data: { logs: [...], totalCount, page, pageSize, totalPages, hasNextPage, hasPreviousPage } }`.
+     Query params are unchanged (`page`, `pageSize`, `category`, `companyId`, `fromDate`, `toDate`).
+   - **`loan/disbursements` (breaking):** it now takes `page` (default 1) and `pageSize`
+     (default **20**). `data` is now
+     `{ disbursements: [...], totalCount, page, pageSize, totalPages, hasNextPage, hasPreviousPage }`
+     instead of an array, newest first.
+   - On `Audit` and `loan/disbursements`, `pageSize` is capped at **100**: a bigger value
+     returns 100 per page, and `data.pageSize` shows the size actually used. Loop on
+     `hasNextPage` to load everything. `company/loans` and `company/loan-products` are not
+     capped today.
+
+### Frontend follow-up to the QA round 2 responses (2026-10-05)
+
+All four items are handled on the frontend. The type check and build pass. **Not tested against the API yet**
+because these backend changes aren't on staging. The frontend accepts both the old and the new
+response shapes, so it's safe to deploy in either order.
+
+| # | Frontend change |
+|---|---|
+| 1 | New public page `/forgot-password` with two steps. (a) Enter your email → `admin/forgot-password` → "If an account exists… expires in 10 minutes." (b) 6-digit code + new password + confirm → `admin/reset-password` → login page with the success message. The password rule is checked before submitting. "Send a new code" calls `forgot-password` again. `OTP_LOCKED`/`OTP_EXPIRED` clear the code field and show your message. The login page's "Forgot password?" now opens this page (pre-filling the email). |
+| 2 | `verify-login` failures branch on `code`. `OTP_INVALID` shows your message (with `remainingAttempts` only if the message doesn't already mention attempts). `OTP_LOCKED`, `OTP_EXPIRED` and the `404` session error clear the login session and send the user to the login page with your message. |
+| 3 | No change: the 15-minute idle sign-out stays. |
+| 4 | Audit Trail reads `data.logs` and `data.totalCount` (the old bare array still works until you deploy). Loans and products already read `hasNextPage`/`totalPages` from `data`. `getDisbursements` now accepts `page`/`pageSize`. No page uses it today (the disbursement screens use `company/loans`), so the shape change breaks nothing. |
+
+Also picked up from your earlier replies (the company-id fix section):
+
+- **`PUT admin/users/{userId}`:** the profile page's Edit mode now has first/last name inputs (1–100 chars,
+  trimmed). Update sends the name change first, then role, then status. Phone and gender aren't shown.
+- **`GET company/users/{userId}`:** the profile page loads by the id in the URL, so a refresh or shared
+  link works. It falls back to the user passed from the table until this is deployed.
+- **No roles:** `roles: []` with `role` omitted shows a red "No role" badge in the table and on the profile.
+  The row menu stays available, so an admin can assign a role.
+
+**Remaining for the backend:** post here when the QA round 2 changes and the company-id fix /
+`PUT admin/users/{userId}` / `GET company/users/{userId}` are on staging. We'll then test forgot/reset
+password, the OTP lock/expiry flow, Audit paging and the user-management actions end to end.
+
+---
+
+## QA round 2, part 2: Loan Request (2026-10-05)
+
+### Done on the frontend
+
+| QA item | Change |
+|---|---|
+| Search by phone doesn't work | Placeholder is now "Search by name or email…" (the list has no phone or BVN). Search also matches the full name ("Jane Doe"). |
+| CSV: ₦ and status | The file now starts with a UTF-8 BOM, so Excel shows "₦". Status is exported as `statusDisplay` (e.g. "Pending"), not `0`. Dates are formatted. |
+| Approve modal missing details | It read `applicantName` / `amountRequested`, which don't exist on the loan. It now uses `userFirstName`/`userLastName` and `amount`. |
+| Status colours | Pending amber, Processing blue, Approved green, Disbursed indigo, Rejected red. |
+| Actions (…) menu | Removed. It could never open: GUID ids were compared with `Number(id)`, which is `NaN`. Clicking a row still opens the loan. |
+| Checkboxes | Removed. They were broken for the same `NaN` reason (one tick ticked them all), and the click also opened the loan. |
+| Employment & income N/A, fake values | Removed invented fallbacks (phone `08045647363`, "Employed", 4.5% interest) and the "Employer" fallback to the *lender's* company name. Missing data now shows "N/A" (see request 2). |
+| Approved amount | The modal's amount field is read-only until request 1 is done (see below). |
+
+### Requests for the backend
+
+1. **Approve a loan for a different amount.** QA: "When the loan request amount is updated before
+   approval, the updated amount is not reflected after approval." `POST loan/{id}/approve` only accepts
+   `{ reason }`, so the amount typed in the approve modal was never sent, and no other endpoint changes
+   a loan's amount. Please add an optional `approvedAmount` (≤ requested amount, ≥ product minimum) to
+   `LoanApprovalRequestDto`, use it for the repayment schedule and disbursement, and return
+   `approvedAmount` on `company/loans` and `company/loans/{id}`. We'll make the field editable again
+   and show "Approved Amount" on Loan Details once it's there.
+2. **Employment & financial info on `GET company/loans/{id}`.** QA sees "N/A" for Employment Status,
+   Monthly Income and the Employment & Financial Information section. The frontend reads
+   `employmentStatus`, `monthlyIncome`, `userPhoneNumber`, `creditScore` and
+   `salaryHistory { companyName, averageMonthlySalary, latestSalaryAmount, salaryCount, … }`.
+   Please confirm which of these the endpoint actually returns (and their names), or add them. The
+   borrower's employer is captured at application (`BorrowerStep1RequestDto.employer`) but doesn't
+   seem to come back on the loan.
+
+### Backend responses to QA round 2, part 2 (2026-10-05)
+
+These are local on the backend and not deployed yet.
+
+1. **Approve for a different amount: won't do.** A loan's amount is fixed once the borrower
+   submits it at onboarding Step 4. That step fixes the figures the borrower accepted in the offer
+   letter and the amount the direct-debit mandate covers. `POST loan/{id}/approve` stays `{ reason }`.
+   Please keep the approve modal's amount read-only, and label it "Requested Amount" or
+   "Loan Amount", not "Approved Amount". A different amount means the borrower submits a new
+   application.
+
+2. **Employment & financial info: added what we have.** `GET company/loans/{id}` (and the list,
+   except where noted) now returns:
+
+   | Field | Source | When it's `null` |
+   |---|---|---|
+   | `userPhoneNumber` | Phone captured at onboarding | Not provided by the borrower |
+   | `employer` | `employer` from Step 1 | Older loans with no onboarding record |
+   | `address` | Address from Step 3 | Not provided yet |
+   | `monthlyIncome` | Remita salary history: average monthly salary | Always for Mono applicants |
+   | `creditScore` (0–1000), `riskLevel` (`Low`/`Medium`/`High`) | Mono credit analysis | **Detail endpoint only.** Also `null` for Remita applicants, and after the cached analysis expires (30 days) |
+   | `salaryHistory` | Remita salary history (unchanged) | Always for Mono applicants |
+
+   **`employmentStatus` doesn't exist.** We never collect it, so please remove it from the page
+   rather than showing "N/A". The "Employment & Financial Information" section can show
+   Employer, Monthly Income and Credit Score / Risk Level, and hide any row that is `null`.
+
+**Also fixed:** `GET loan/{id}/offer-letter` and the offer letter email sent after approval
+recalculated the figures and left out the legal fee. Its `totalFees` and `disbursementAmount`
+therefore didn't match what is actually paid out. They now use the figures stored at Step 4.
+There's a new `legalFee` field next to `processingFee` and `maintenanceFee`.
+
+### Frontend follow-up to part 2 responses (2026-10-05)
+
+The type check and build pass. Not tested against the API until these changes are on staging.
+
+| # | Frontend change |
+|---|---|
+| 1 | The approve modal's amount stays read-only and is relabelled **"Loan Amount"**, with the note "The amount the borrower applied for and accepted. A different amount needs a new application." `approve` still sends `{ reason }` only. |
+| 2 | **Personal Information:** Phone, Address and Monthly Income show only when non-`null`. Employment Status was removed. **Employment & Financial Information:** Employer (`employer`, falling back to `salaryHistory.companyName`) and Monthly Income, each hidden when `null`. The salary history table is unchanged. **Risk Assessment:** shows the real `creditScore` (out of 1000) and `riskLevel` (Low green / Medium amber / High red). The hard-coded "Excellent" and "Low Risk" are gone, and when both are `null` it says "No credit analysis is available for this applicant." The approve modal shows income and credit score only when present. |
+| Offer letter | No frontend change: the admin app doesn't display `loan/{id}/offer-letter`, so `legalFee` isn't shown anywhere yet. |
+
+**Remaining for the backend:** post here when part 2 is on staging, and we'll check the Loan Details page
+against real Remita and Mono applicants.
+
+---
+
+## QA round 2, part 3: Audit Trail (2026-10-05)
+
+Staging now serves the paged `Audit` envelope (`PagedAuditLogListDto`), along with `forgot-password`,
+`reset-password`, `PUT admin/users/{userId}` and `GET company/users/{userId}`. Thanks.
+
+### Done on the frontend
+
+| QA item | Change |
+|---|---|
+| Admin username shows N/A | The page showed `userEmail`, which is empty on many logs. It now shows the admin's **name**, looked up from `userId` in `company/users` (needs `users.view`), then `userEmail`, then "Unknown user" (has `userId`, no match) or "System" (no `userId`). The email shows under the name. See request 1. |
+| Logins / User Actions filters return Security rows | The filter was a client-side substring match on `action` **or** `category` (so "user" matched `UserLogin` in Security). It's now an exact `category` filter sent to the API, so it covers every page. The options are the categories the API has returned, until request 2 gives us a fixed list. |
+| No Previous/Next at 10 per page | Fixed in the QA round 2 commit (not yet deployed when QA tested). "Next" now follows `hasNextPage`/`totalCount` from the new envelope. |
+| Login/Logout categorised as Security | Category comes from the API, so this is request 3. |
+
+CSV export also gets the UTF-8 BOM and the same user label.
+
+### Requests for the backend
+
+1. **Fill in who did it.** Many logs have an empty `userEmail` (QA saw "N/A"). Please always set `userEmail`
+   when `userId` is set, and add `userName` (full name) to `AuditLog`, so the page doesn't have to look users up
+   (it can only find users in the viewer's company, and only with `users.view`).
+2. **List of categories.** `GET Audit` filters by an exact `category`, but there's no list of valid values.
+   Please document the fixed set (or add `GET Audit/categories`). We'll use it for the filter dropdown, with
+   the labels QA expects (Logins, User Actions, Loan Actions, Security, …).
+3. **Category mapping.** QA: login and logout are categorised as **Security** instead of an
+   authentication/login category, so the "Logins" filter can't separate them from real security events
+   (failed logins, password changes, lockouts, role changes). Suggested categories, roughly:
+   `Authentication` (login, logout, OTP verified, token refresh), `Security` (failed login, OTP locked,
+   password change/reset, role assign/remove, activate/deactivate), `User` (admin user created/edited),
+   `Loan` (approve, reject, disburse), `Product`, `Wallet`. Whatever you choose, please list it under request 2.
+
+### Backend responses to QA round 2, part 3 (2026-10-05)
+
+These are local on the backend and not deployed yet. Existing rows get fixed by a backfill script at deploy.
+
+1. **Who did it: done.** `userId`, `userEmail` and the new **`userName`** (full name) now always describe
+   the person who **acted**. The backend fills in the email, name and company from `userId`, so you can
+   drop the `company/users` lookup and show `userName`, then `userEmail`, then "System" when all are empty.
+   - **Bug fixed:** role assign/remove, activate/deactivate and user edits used to put the *affected*
+     user's email in `userEmail` next to the acting admin's `userId`. The affected user is now only in
+     `entityType: "User"` + `entityId`. The backfill corrects existing rows.
+   - **Admin creation:** `SuperAdminCreated` / `AdminCreated` now record the creator. Older rows recorded
+     the new account instead, and the creator wasn't stored at all, so the backfill clears the actor on
+     those rows ("System"). `entityId` still has the new account.
+   - Failed logins have no `userId` (the email may not exist). `userEmail` is what was typed, and
+     `userName` is filled when it matches an account.
+   - Rows now carry the actor's company when there isn't one already. So a company admin's Audit Trail now
+     includes its own staff's logins and logouts, which it couldn't see before.
+
+2. **Category list: `GET Audit/categories`** (needs `audit.view`) returns
+   `[{ "value": "Authentication", "label": "Logins" }, …]`, in display order. Filter with `?category=<value>`.
+
+   | `value` | `label` |
+   |---|---|
+   | `Authentication` | Logins |
+   | `Security` | Security |
+   | `User` | User Actions |
+   | `Loan` | Loan Actions |
+   | `Financial` | Wallet & Finance |
+
+3. **Category mapping: done**, as suggested except where noted:
+   - **`Authentication`:** login succeeded, login code sent, and a new **`Logout`** event (logout wasn't
+     audited before).
+   - **`Security`:** failed logins, blocked (deactivated) login attempts, login OTP failures, password
+     change and reset (including failures), SuperAdmin creation denied, role assign/remove,
+     activate/deactivate.
+   - **`User`:** admin, SuperAdmin and company user created; user edited.
+   - **`Loan`:** approve, reject, disburse, offer letter accepted, mandate activated.
+   - **`Financial`:** wallet debit, credit and transfers. The name is kept as `Financial`, not `Wallet`,
+     so stored rows don't need renaming; use the label.
+   - **Not done:** token refresh isn't logged; it fires every few minutes per open tab and would swamp the
+     log. There's no `Product` category, because product changes aren't audited yet.
+
+   The backfill moves existing login rows to `Authentication`, and existing role/status rows to `Security`.
+
+### Frontend follow-up to part 3 responses (2026-10-05)
+
+The type check, lint and build pass. Not tested against the API until part 3 and the backfill are on staging.
+
+| # | Frontend change |
+|---|---|
+| 1 | The User column shows `userName`, then `userEmail`, then "System". "Unknown user" is kept for a row with a `userId` but neither field, which only happens before the backfill runs. The email shows under the name when both are present. The `company/users` lookup was removed, so the page no longer needs `users.view`. |
+| 2 | The category dropdown comes from `GET Audit/categories` (labels shown, `value` sent as `?category=`). Category badges show the label too, coloured by value: Authentication green, Security red, User blue, Loan amber, Financial purple. Until the endpoint is deployed, the dropdown falls back to the categories seen in the loaded logs. The CSV uses the labels. |
+| 3 | No change needed. The new `Logout` event will show under Logins. |
+
+**Remaining for the backend:** post here when part 3 and the backfill are on staging, and we'll recheck the
+four Audit Trail QA items.
+
+---
+
+## QA round 2, part 4: Fund Wallet (2026-10-05)
+
+### Done on the frontend
+
+| QA item | Change |
+|---|---|
+| No message below ₦1,000 | The Fund button was disabled below ₦1,000, so the alert in the handler never ran. A red inline message ("The minimum funding amount is ₦1,000.") now shows under the amount as soon as it's below the minimum. |
+| Recent Transactions 1 hour behind | Wallet `createdAt` (like other timestamps, e.g. `2026-03-09T19:43:08.5413631`) has no time-zone offset, so browsers read it as local time: one hour behind in Lagos. A new `parseApiDate` helper treats offset-less timestamps as UTC. It's used for wallet transactions, the Audit Trail and `formatDate`. See request 1. |
+| Declined funding: no redirect | `/payment-success` treated any message containing "success" as success (so "Payment was not successful" showed as a success). It now relies on `data.transactionStatus` (or `status`), falling back to `success`. A decline shows "Payment Not Completed" and redirects to the wallet with a "Back to Wallet" button. `?status=cancelled` or `?status=failed` is handled the same way, for request 2. |
+
+Also removed: Recent Transactions fell back to hard-coded **mock** transactions ("Loan Disbursement - John Doe", …)
+when the API returned none. It now shows "No transactions found".
+
+### Requests for the backend
+
+1. **Send timestamps with an offset.** `createdAt`, `timestamp` and similar fields come back without `Z`
+   (e.g. `2026-03-09T19:43:08.5413631`). Please serialise them as UTC with `Z` (`DateTimeKind.Utc` /
+   `DateTimeOffset`). The frontend now assumes offset-less values are UTC. **Please confirm they are UTC.**
+   If any are stored in local time, they'll now show an hour ahead.
+2. **Bring the user back from a cancelled/declined Paystack checkout.** Paystack only redirects to
+   `callback_url` after a completed payment. On a decline the user stays on Paystack's page, which is what QA saw.
+   When initialising the transaction in `POST Wallet/fund`, please set
+   `metadata.cancel_action = <callbackUrl>?status=cancelled` (the frontend sends
+   `callbackUrl = https://<admin-host>/payment-success`). The admin app already handles `?status=cancelled`.
+3. **`Wallet/fund/complete` result.** Please confirm `data.transactionStatus` is Paystack's status
+   (`success`, `failed`, `abandoned`, …), and that a declined or abandoned payment never returns
+   `transactionStatus: "success"`. The frontend credits the UI only on `success`.
+4. **Minimum amount on the server.** The ₦1,000 minimum is only enforced in the UI. Please reject smaller
+   amounts in `POST Wallet/fund` with a `400` and a message.
+
+### Backend responses to QA round 2, part 4 (2026-10-05)
+
+These are local on the backend and not deployed yet. They need a small schema script at deploy.
+
+1. **Timestamps: confirmed UTC, now sent with `Z`.** Every stored timestamp is written with `DateTime.UtcNow`;
+   they lacked the offset only because SQL Server returns them without one. Every `DateTime` in API responses
+   now ends in `Z` (e.g. `2026-03-09T19:43:08.5413631Z`), so `parseApiDate` will see an offset from now on.
+   Dates you send us without an offset are read as UTC.
+
+2. **Cancelled/declined checkout: done.** `POST Wallet/fund` now sets Paystack's
+   `metadata.cancel_action = <callbackUrl>?status=cancelled` (`&status=cancelled` if the URL already has a query).
+
+3. **`Wallet/fund/complete`: rebuilt.** Please note:
+   - **Today it returns only `{ message }`**, with no `success` and no `data.transactionStatus`. So your new
+     `/payment-success` logic would show a **successful** payment as declined if released before this deploy.
+   - **New response** (standard envelope):
+     - `200` `{ success: true, message, data: { transactionStatus: "success", amount, balance, alreadyCompleted } }`
+     - `alreadyCompleted: true` means the reference was already credited (e.g. the page was refreshed).
+       Nothing is credited twice; treat it as success.
+     - A declined or abandoned payment returns `400` with `data.transactionStatus` set to Paystack's status
+       (`failed`, `abandoned`, …). `transactionStatus` is only ever `"success"` when the wallet was credited.
+     - `404` "Funding not found": unknown reference, or another company's.
+     - `409`: a funding started before this deploy. Those can't be completed any more.
+     - `502`: Paystack couldn't be reached. It's safe to retry.
+   - **Bug fixed:** the backend didn't record that a reference had been credited, so every call to
+     `fund/complete` with a paid reference (a refresh, a retry) credited the wallet **again**. Each funding is
+     now credited exactly once. It's also checked against the amount and currency Paystack reports, and a
+     company admin can only complete their own company's fundings.
+
+4. **Minimum on the server: done.** `POST Wallet/fund` rejects amounts below ₦1,000 with `400`
+   "The minimum funding amount is ₦1,000." Errors from `fund` now use the `{ success, message }` envelope.
+   A successful `fund` response is unchanged (Paystack's initialisation shape).
+
+**Also for the wallet page:** transactions now include **`status`** (`Pending`, `Completed`, `Failed`) on Paystack
+fundings started after this deploy; it's `null` for everything else. A funding is created as `Pending` when
+checkout starts, and stays that way if the user never pays. Please stop labelling every row "completed": hide or
+grey out `Pending`/`Failed` fundings, and treat `null` as completed.
+
+**Paystack webhook (added 2026-10-06):** the backend now also credits a funding from Paystack's `charge.success`
+webhook, so a payment is credited even if the user closes the tab before `/payment-success` loads. Whichever
+arrives first credits the wallet; the other gets `alreadyCompleted: true`. No frontend change is needed.
+
+### Frontend follow-up to part 4 responses (2026-10-06)
+
+The type check and build pass. Not tested against the API until part 4 is on staging.
+
+| # | Frontend change |
+|---|---|
+| 1 | No change needed: `parseApiDate` leaves values ending in `Z` alone, and still reads older offset-less values as UTC. |
+| 2 | No change needed: `/payment-success?status=cancelled` already shows "Payment Not Completed… your wallet wasn't charged" and returns to the wallet. |
+| 3 | `/payment-success` now works with **both** response shapes, so it's safe to release before or after your deploy. A `200` counts as success unless `success: false` or `data.transactionStatus` is something other than `"success"` (the old `{ message }`-only response = success; `alreadyCompleted` = success). A `400` with `data.transactionStatus` shows your message as a decline. `404`/`409` show your message and return to the wallet. `502` stays on the page with a **Try again** button (reloads and calls `fund/complete` again). |
+| 4 | No change needed: the inline ₦1,000 message stays. A server `400` from `fund` is shown through the usual error handling. |
+| Transaction `status` | Recent Transactions shows `status`: `null` → "completed"; **Pending** (amber) and **Failed** (red) rows are greyed out with the amount struck through, so they don't read as money moved. |
+
+**Paystack webhook: thanks, no frontend change needed.** If the webhook credits the wallet first,
+`/payment-success` gets `alreadyCompleted: true` and shows success. The "Verify payment" action we suggested
+isn't needed. A Pending row that the webhook completes shows as completed the next time the wallet page loads.
+
+**Remaining for the backend:** post here when part 4 (and the schema script) is on staging. We'll then test
+funding, declining, cancelling, refreshing `/payment-success`, and the ₦1,000 minimum end to end.

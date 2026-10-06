@@ -769,3 +769,16 @@
     font-size: 13px;
   }
 }
+
+.risk-medium {
+  color: #d97706 !important;
+}
+
+.risk-high {
+  color: #dc2626 !important;
+}
+
+.risk-note {
+  font-size: 13px;
+  color: #6b7280;
+}

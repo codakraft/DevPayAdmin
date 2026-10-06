@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import TablePagination, { usePagination } from "../../../components/TablePagination";
 import styles from "./AdsTable.module.css";
 import { LoanRequest } from "../loanRequest/components/loanTable";
 
@@ -96,7 +97,8 @@ export default function UnpaidTable({ data }: LoanRequestTableProps) {
 
       return searchMatch && dateMatch;
     });
-  }, [searchQuery, dateFilter]);
+  }, [searchQuery, dateFilter, data]);
+  const { pageItems, paginationProps } = usePagination(filteredData);
 
   const isAllSelected =
     selected.length === filteredData.length && filteredData.length > 0;
@@ -209,75 +211,78 @@ export default function UnpaidTable({ data }: LoanRequestTableProps) {
         </div>
       </div>
 
-      <table className={styles.customTable}>
-        <thead>
-          <tr>
-            <th>
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={toggleAll}
-              />
-            </th>
-            <th>Date Created</th>
-            <th>Name</th>
-            <th>Account No.</th>
-            <th>Loan Amount</th>
-            <th>Tenure(Months)</th>
-            <th>Unpaid Principal</th>
-            <th>Due Date</th>
-            <th>Total Unpaid</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredData.length === 0 ? (
+      <div className="table-scroll">
+        <table className={styles.customTable}>
+          <thead>
             <tr>
-              <td colSpan={9} className={styles.noResults}>
-                No unpaid loans found matching your filters.
-              </td>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={toggleAll}
+                />
+              </th>
+              <th>Date Created</th>
+              <th>Name</th>
+              <th>Account No.</th>
+              <th>Loan Amount</th>
+              <th>Tenure(Months)</th>
+              <th>Unpaid Principal</th>
+              <th>Due Date</th>
+              <th>Total Unpaid</th>
+              <th></th>
             </tr>
-          ) : (
-            filteredData.map((row) => (
-              <tr
-                key={row.id}
-                // onClick={(e) => handleRowClick(Number(row.id), e)}
-                style={{ cursor: "pointer" }}
-              >
-                <td onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(Number(row.id))}
-                    onChange={() => toggleOne(Number(row.id))}
-                  />
-                </td>
-                <td>
-                  <div className={styles.adDetails}>
-                    <div>
-                      <p>{row.createdAt}</p>
-                    </div>
-                  </div>
-                </td>
-                <td>{row.userFullName}</td>
-                <td>{row.userEmail}</td>
-                <td>₦{row.amount.toLocaleString()}</td>
-                <td>{row.durationInMonths} months</td>
-                <td>₦{row.amount.toLocaleString()}</td>
-                <td>{row.dueDate}</td>
-                <td>₦{row.amount.toLocaleString()}</td>
-                <td onClick={(e) => e.stopPropagation()}>
-                  <button
-                    className={styles.ellipsisBtn}
-                    aria-label="More options"
-                  >
-                    ...
-                  </button>
+          </thead>
+          <tbody>
+            {filteredData.length === 0 ? (
+              <tr>
+                <td colSpan={9} className={styles.noResults}>
+                  No unpaid loans found matching your filters.
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              pageItems.map((row) => (
+                <tr
+                  key={row.id}
+                  // onClick={(e) => handleRowClick(Number(row.id), e)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(Number(row.id))}
+                      onChange={() => toggleOne(Number(row.id))}
+                    />
+                  </td>
+                  <td>
+                    <div className={styles.adDetails}>
+                      <div>
+                        <p>{row.createdAt}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{row.userFullName}</td>
+                  <td>{row.userEmail}</td>
+                  <td>₦{row.amount.toLocaleString()}</td>
+                  <td>{row.durationInMonths} months</td>
+                  <td>₦{row.amount.toLocaleString()}</td>
+                  <td>{row.dueDate}</td>
+                  <td>₦{row.amount.toLocaleString()}</td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className={styles.ellipsisBtn}
+                      aria-label="More options"
+                    >
+                      ...
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <TablePagination {...paginationProps} />
     </div>
   );
 }

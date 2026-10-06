@@ -163,3 +163,37 @@
     padding: 20px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
+/* Mobile layout */
+@media (max-width: 900px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .charts-container {
+    grid-template-columns: 1fr;
+  }
+
+  .time-filter-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .section-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .users-section {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header h1 {
+    font-size: 20px;
+  }
+}

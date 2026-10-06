@@ -5,6 +5,7 @@ import Button from "../../../ui/components/button/button";
 import styles from "../adsManagement/createAdd.module.css";
 import LoanTable from "./product-table";
 import { useLazyGetLoanProductQuery } from "../../../store/apiSlice";
+import { fetchAllPages, toPageResult } from "../../../helpers/pagination";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import { Permissions } from "../../../helpers/auth";
@@ -17,15 +18,13 @@ export default function LoanProduct() {
 
   useEffect(() => {
     const fetchLoans = async () => {
-      const response = await getLoanProduct().unwrap();
-      //   {
-      //   id: "6f2e993b-26c9-4175-9021-cdf1106d8466",
-      // }
-      if (response?.data) {
-        setData(response.data);
-      }
-
-      console.log("reso", response);
+      const loanProducts = await fetchAllPages(async (page, pageSize) =>
+        toPageResult<any>(
+          await getLoanProduct({ page, pageSize }).unwrap(),
+          "loanProducts",
+        ),
+      );
+      setData({ loanProducts });
     };
     fetchLoans();
   }, []);

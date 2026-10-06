@@ -228,3 +228,34 @@
     justify-content: center;
   }
 }
+
+/* Status badge colours */
+.statusPending {
+  background-color: #FEF3C7;
+  color: #92400E;
+}
+
+.statusProcessing {
+  background-color: #DBEAFE;
+  color: #1E40AF;
+}
+
+.statusApproved {
+  background-color: #D1FAE5;
+  color: #065F46;
+}
+
+.statusDisbursed {
+  background-color: #E0E7FF;
+  color: #3730A3;
+}
+
+.statusRejected {
+  background-color: #FEE2E2;
+  color: #991B1B;
+}
+
+.statusOther {
+  background-color: #F3F4F6;
+  color: #374151;
+}
