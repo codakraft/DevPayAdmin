@@ -4,6 +4,16 @@ import Button from "../../../ui/components/button/button";
 import { useLazyGetLoansByIDQuery } from "../../../store/apiSlice";
 import "./loanDetail.css";
 
+interface Transaction {
+  id: number;
+  date: string;
+  type: string;
+  amount: string;
+  description: string;
+  status: string;
+  balance: string;
+}
+
 const LoanDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -56,6 +66,20 @@ const LoanDetail: React.FC = () => {
     );
   }
 
+  // Format date to dd/mm/yyyy
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return dateString;
+    }
+  };
+
   // Format status for display
   const getStatusDisplay = (status: number) => {
     const statusMap: Record<number, string> = {
@@ -70,6 +94,74 @@ const LoanDetail: React.FC = () => {
 
   const statusDisplay = getStatusDisplay(loanData.status);
 
+  // Calculate payment schedule
+  const calculatePaymentSchedule = () => {
+    if (
+      !loanData.amount ||
+      !loanData.productInterestRate ||
+      !loanData.durationInMonths
+    ) {
+      return [];
+    }
+
+    const principal = loanData.amount;
+    const monthlyRate = loanData.productInterestRate / 100 / 12;
+    const numberOfPayments = loanData.durationInMonths;
+
+    // Calculate monthly payment using amortization formula
+    const monthlyPayment =
+      loanData.monthlyRepayment ||
+      (principal * monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) /
+        (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+
+    let remainingBalance = principal;
+    const schedule = [];
+    const startDate = loanData.approvedAt
+      ? new Date(loanData.approvedAt)
+      : new Date();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < numberOfPayments; i++) {
+      const interestPayment = remainingBalance * monthlyRate;
+      const principalPayment = monthlyPayment - interestPayment;
+      remainingBalance -= principalPayment;
+
+      // Calculate due date for this payment (i+1 months after disbursement)
+      const paymentDueDate = new Date(startDate);
+      paymentDueDate.setMonth(paymentDueDate.getMonth() + i + 1);
+      paymentDueDate.setHours(0, 0, 0, 0);
+
+      // Determine payment status based on due date
+      let status = "Scheduled";
+      if (paymentDueDate <= today) {
+        status = "Due"; // Payment is due now or overdue
+      }
+
+      schedule.push({
+        id: i + 1,
+        dueDate: formatDate(paymentDueDate.toISOString()),
+        amount: `₦${monthlyPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        principal: `₦${principalPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        interest: `₦${interestPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        status: status,
+      });
+    }
+
+    return schedule;
+  };
+
+  const upcomingSchedule = calculatePaymentSchedule();
+
+  console.log("Payment Schedule:", upcomingSchedule);
+  console.log("Loan Data for calculation:", {
+    amount: loanData.amount,
+    interestRate: loanData.productInterestRate,
+    durationInMonths: loanData.durationInMonths,
+    approvedAt: loanData.approvedAt,
+  });
+
   // Format loan data for display
   const displayData = {
     ...loanData,
@@ -81,112 +173,69 @@ const LoanDetail: React.FC = () => {
     principalAmount: loanData.amount
       ? `₦${loanData.amount.toLocaleString()}`
       : "N/A",
-    interestRate: loanData.interestRate ? `${loanData.interestRate}%` : "N/A",
+    interestRate: loanData.productInterestRate
+      ? `${loanData.productInterestRate}%`
+      : "N/A",
     loanTerm: loanData.durationInMonths
       ? `${loanData.durationInMonths} months`
       : "N/A",
     monthlyPayment: loanData.monthlyRepayment
       ? `₦${loanData.monthlyRepayment.toLocaleString()}`
       : "N/A",
-    totalPaid: "₦0",
-    remainingPayments: loanData.durationInMonths || 0,
-    currentBalance: loanData.amount
-      ? `₦${loanData.amount.toLocaleString()}`
-      : "N/A",
-    disbursementDate: loanData.disbursedDate || "Not disbursed",
-    maturityDate: loanData.maturityDate || "N/A",
-    nextPaymentDate: "N/A",
-    bvn: loanData.userBVN || "N/A",
-    phone: loanData.userPhoneNumber || "N/A",
-    email: loanData.userEmail || "N/A",
-    employmentStatus: loanData.employmentStatus || "N/A",
-    monthlyIncome: loanData.monthlyIncome
-      ? `₦${loanData.monthlyIncome.toLocaleString()}`
-      : "N/A",
-    accountNumber: loanData.accountNumber || "N/A",
-    bankName: loanData.bankName || "N/A",
-    loanType: loanData.purpose || "Personal Loan",
+    totalPaid: loanData.totalPaid
+      ? `₦${loanData.totalPaid.toLocaleString()}`
+      : "₦0",
+    remainingPayments:
+      loanData.remainingPayments || loanData.durationInMonths || 0,
+    currentBalance: loanData.outstandingBalance
+      ? `₦${loanData.outstandingBalance.toLocaleString()}`
+      : loanData.amount
+        ? `₦${loanData.amount.toLocaleString()}`
+        : "N/A",
+    disbursementDate: formatDate(loanData.approvedAt) || "Not approved",
+    maturityDate: formatDate(loanData.dueDate) || "N/A",
+    nextPaymentDate:
+      upcomingSchedule.length > 0 ? upcomingSchedule[0].dueDate : "N/A",
+    bvn: loanData.userBVN || loanData.bvn || "N/A",
+    phone: loanData.userPhoneNumber || loanData.phoneNumber || "N/A",
+    email: loanData.userEmail || loanData.email || "N/A",
+    employmentStatus:
+      loanData.employmentStatus ||
+      loanData.salaryHistory?.companyName ||
+      loanData.employerName ||
+      "N/A",
+    monthlyIncome:
+      loanData.salaryHistory?.averageMonthlySalary ||
+      loanData.monthlyIncome ||
+      loanData.netMonthlySalary
+        ? `₦${(loanData.salaryHistory?.averageMonthlySalary || loanData.monthlyIncome || loanData.netMonthlySalary).toLocaleString()}`
+        : "N/A",
+    accountNumber:
+      loanData.accountNumber || loanData.userAccountNumber || "N/A",
+    bankName: loanData.bankName || loanData.userBankName || "N/A",
+    loanType: loanData.productName || loanData.purpose || "Personal Loan",
   };
 
-  const transactionHistory = [
+  // Map transaction history from API response
+  const transactionHistory = loanData.transactions?.map(
+    (txn: any, index: number) => ({
+      id: index + 1,
+      date: formatDate(txn.transactionDate || txn.createdAt),
+      type: txn.transactionType || "Payment",
+      amount: txn.amount ? `₦${txn.amount.toLocaleString()}` : "N/A",
+      description: txn.description || txn.narration || "Transaction",
+      status: txn.status || "Completed",
+      balance: txn.balance ? `₦${txn.balance.toLocaleString()}` : "N/A",
+    }),
+  ) || [
     {
       id: 1,
-      date: "2025-06-15",
-      type: "Payment",
-      amount: "₦45,833",
-      description: "Monthly Payment",
+      date: formatDate(loanData.approvedAt),
+      type: "Loan Approved",
+      amount: loanData.amount ? `₦${loanData.amount.toLocaleString()}` : "N/A",
+      description: `${loanData.productName || "Loan"} Approved`,
       status: "Completed",
-      balance: "₦387,500",
-    },
-    {
-      id: 2,
-      date: "2025-05-15",
-      type: "Payment",
-      amount: "₦45,833",
-      description: "Monthly Payment",
-      status: "Completed",
-      balance: "₦433,333",
-    },
-    {
-      id: 3,
-      date: "2025-04-15",
-      type: "Payment",
-      amount: "₦20,834",
-      description: "Partial Payment",
-      status: "Completed",
-      balance: "₦479,166",
-    },
-    {
-      id: 4,
-      date: "2025-03-10",
-      type: "Disbursement",
-      amount: "₦500,000",
-      description: "Loan Disbursement",
-      status: "Completed",
-      balance: "₦500,000",
-    },
-  ];
-
-  const upcomingSchedule = [
-    {
-      id: 1,
-      dueDate: "2025-07-15",
-      amount: "₦45,833",
-      principal: "₦42,083",
-      interest: "₦3,750",
-      status: "Due",
-    },
-    {
-      id: 2,
-      dueDate: "2025-08-15",
-      amount: "₦45,833",
-      principal: "₦42,242",
-      interest: "₦3,591",
-      status: "Scheduled",
-    },
-    {
-      id: 3,
-      dueDate: "2025-09-15",
-      amount: "₦45,833",
-      principal: "₦42,401",
-      interest: "₦3,432",
-      status: "Scheduled",
-    },
-    {
-      id: 4,
-      dueDate: "2025-10-15",
-      amount: "₦45,833",
-      principal: "₦42,561",
-      interest: "₦3,272",
-      status: "Scheduled",
-    },
-    {
-      id: 5,
-      dueDate: "2025-11-15",
-      amount: "₦45,833",
-      principal: "₦42,722",
-      interest: "₦3,111",
-      status: "Scheduled",
+      balance: loanData.amount ? `₦${loanData.amount.toLocaleString()}` : "N/A",
     },
   ];
 
@@ -298,11 +347,15 @@ const LoanDetail: React.FC = () => {
             </div>
             <div className="info-item">
               <span className="label">Maturity Date</span>
-              <span className="value">{displayData.maturityDate}</span>
+              <span className="value">{formatDate(displayData.dueDate)}</span>
             </div>
             <div className="info-item">
               <span className="label">Monthly Payment</span>
-              <span className="value">{displayData.monthlyPayment}</span>
+              <span className="value">
+                {loanData.amount && loanData.durationInMonths
+                  ? `₦${(loanData.amount / loanData.durationInMonths).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : displayData.monthlyPayment}
+              </span>
             </div>
           </div>
         </div>
@@ -313,13 +366,13 @@ const LoanDetail: React.FC = () => {
             <h2>Borrower Information</h2>
           </div>
           <div className="info-grid">
-            <div className="info-item">
+            {/* <div className="info-item">
               <span className="label">BVN</span>
               <span className="value">{displayData.bvn}</span>
-            </div>
+            </div> */}
             <div className="info-item">
               <span className="label">Phone</span>
-              <span className="value">{displayData.phone}</span>
+              <span className="value">09066662020</span>
             </div>
             <div className="info-item">
               <span className="label">Email</span>
@@ -333,14 +386,14 @@ const LoanDetail: React.FC = () => {
               <span className="label">Monthly Income</span>
               <span className="value">{displayData.monthlyIncome}</span>
             </div>
-            <div className="info-item">
+            {/* <div className="info-item">
               <span className="label">Account Number</span>
               <span className="value">{displayData.accountNumber}</span>
             </div>
             <div className="info-item">
               <span className="label">Bank</span>
               <span className="value">{displayData.bankName}</span>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -361,8 +414,8 @@ const LoanDetail: React.FC = () => {
                   <th>Status</th>
                 </tr>
               </thead>
-              <tbody>
-                {transactionHistory.map((transaction) => (
+              {/* <tbody>
+                {transactionHistory.map((transaction: Transaction) => (
                   <tr key={transaction.id}>
                     <td>{transaction.date}</td>
                     <td>
@@ -384,7 +437,7 @@ const LoanDetail: React.FC = () => {
                     </td>
                   </tr>
                 ))}
-              </tbody>
+              </tbody> */}
             </table>
           </div>
         </div>
