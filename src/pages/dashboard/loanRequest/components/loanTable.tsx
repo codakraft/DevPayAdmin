@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { formatDate } from "../../../../helpers";
+import { formatDate, parseApiDate } from "../../../../helpers";
 import TablePagination, { usePagination } from "../../../../components/TablePagination";
 import styles from "./loanTable.module.css";
 
@@ -143,6 +143,20 @@ const statusBadgeClass = (status: number) => {
   }
 };
 
+type DatePreset = "all" | "today" | "7d" | "30d" | "custom";
+
+// "YYYY-MM-DD" in the viewer's time zone, comparable as a string
+const toDayKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate()
+  ).padStart(2, "0")}`;
+
+const daysAgoKey = (days: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return toDayKey(date);
+};
+
 interface LoanRequestTableProps {
   data: LoanRequest[];
 }
@@ -150,7 +164,29 @@ interface LoanRequestTableProps {
 export default function LoanRequestTable({ data }: LoanRequestTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [dateFilter, setDateFilter] = useState("");
+  const [datePreset, setDatePreset] = useState<DatePreset>("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  // Inclusive [from, to] day range; an open end is unbounded
+  const dateRange = useMemo(() => {
+    const today = toDayKey(new Date());
+    switch (datePreset) {
+      case "today":
+        return { from: today, to: today };
+      case "7d":
+        return { from: daysAgoKey(6), to: today };
+      case "30d":
+        return { from: daysAgoKey(29), to: today };
+      case "custom":
+        return startDate || endDate
+          ? { from: startDate || undefined, to: endDate || undefined }
+          : null;
+      default:
+        return null;
+    }
+  }, [datePreset, startDate, endDate]);
+  const hasDateFilter = dateRange !== null;
   const navigate = useNavigate();
 
   // Filter data based on search query, status filter, and date filter
@@ -169,11 +205,19 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
         statusFilter === "All" || loan.statusDisplay === statusFilter;
 
       // Date filter
-      const dateMatch = dateFilter === "" || loan.createdAt === dateFilter;
+      let dateMatch = true;
+      if (dateRange) {
+        const created = parseApiDate(loan.createdAt);
+        const day = isNaN(created.getTime()) ? "" : toDayKey(created);
+        dateMatch =
+          day !== "" &&
+          (!dateRange.from || day >= dateRange.from) &&
+          (!dateRange.to || day <= dateRange.to);
+      }
 
       return searchMatch && statusMatch && dateMatch;
     });
-  }, [searchQuery, statusFilter, dateFilter, data]);
+  }, [searchQuery, statusFilter, dateRange, data]);
   const { pageItems, paginationProps } = usePagination(filteredData);
 
   const handleViewLoan = (row: LoanRequest) => {
@@ -248,23 +292,56 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
             <option value="Rejected">Rejected</option>
           </select>
 
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className={styles.dateFilter}
-          />
+          <select
+            value={datePreset}
+            onChange={(e) => setDatePreset(e.target.value as DatePreset)}
+            className={styles.filterSelect}
+            aria-label="Date created"
+          >
+            <option value="all">All dates</option>
+            <option value="today">Today</option>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+            <option value="custom">Custom range…</option>
+          </select>
+
+          {datePreset === "custom" && (
+            <div className={styles.dateRange}>
+              <label>
+                <span>Start date</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  max={endDate || undefined}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className={styles.dateFilter}
+                />
+              </label>
+              <label>
+                <span>End date</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className={styles.dateFilter}
+                />
+              </label>
+            </div>
+          )}
 
           <button onClick={exportToCSV} className={styles.exportBtn}>
             Export CSV
           </button>
 
-          {(searchQuery || statusFilter !== "All" || dateFilter) && (
+          {(searchQuery || statusFilter !== "All" || hasDateFilter) && (
             <button
               onClick={() => {
                 setSearchQuery("");
                 setStatusFilter("All");
-                setDateFilter("");
+                setDatePreset("all");
+                setStartDate("");
+                setEndDate("");
               }}
               className={styles.clearFilters}
             >
