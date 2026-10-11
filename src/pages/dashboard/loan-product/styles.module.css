@@ -262,3 +262,9 @@
   gap: 1rem;
   margin-top: 2rem;
 }
+
+.submitError {
+  color: #EF4444;
+  font-size: 14px;
+  margin: 16px 0 0;
+}

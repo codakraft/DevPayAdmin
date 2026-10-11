@@ -3,7 +3,7 @@ import { useLogoutMutation } from "../store/apiSlice";
 import { useAuth } from "../context/AuthContext";
 import { LAST_ACTIVITY_KEY, setLoginNotice } from "../helpers/auth";
 
-export const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+export const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 const WARNING_MS = 60 * 1000;
 const ACTIVITY_EVENTS = [
   "mousemove",

@@ -2,6 +2,17 @@ import React, { useState } from "react";
 import { AdFormValues } from "./formik-types/formikTypes";
 import SuccessModal from "../../../ui/components/modal/SuccessModal";
 
+const FREQUENCY_LABELS: Record<string, string> = {
+  "0": "Per Month",
+  "1": "Per Annum",
+};
+
+const BASIS_LABELS: Record<string, string> = {
+  "0": "Flat",
+  "1": "Reducing",
+  "2": "Reducing Interest But Increasing Principal",
+};
+
 interface PreviewComponentProps {
   values: AdFormValues;
   onSuccess?: () => void;
@@ -97,7 +108,6 @@ export default function PreviewComponent({
             borderRadius: 12,
             boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
             padding: 32,
-            marginBottom: 32,
           }}
         >
           <PreviewField label="Name" value={values.name} />
@@ -136,11 +146,11 @@ export default function PreviewComponent({
           />
           <PreviewField
             label="Interest Computation Frequency"
-            value={values.interestComputationFrequency}
+            value={FREQUENCY_LABELS[values.interestComputationFrequency ?? ""]}
           />
           <PreviewField
             label="Interest Computation Basis"
-            value={values.interestComputationBasis}
+            value={BASIS_LABELS[values.interestComputationBasis ?? ""]}
           />
           <PreviewField
             label="Payment Schedule Breakdown"
@@ -151,96 +161,6 @@ export default function PreviewComponent({
             value={values.allowMultipleLoans ? "Yes" : "No"}
           />
         </div>
-        <h3 style={{ fontSize: 22, fontWeight: 600, marginBottom: 16 }}>
-          Demographics & Targeting
-        </h3>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 32,
-            background: "#fff",
-            borderRadius: 12,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            padding: 32,
-          }}
-        >
-          <PreviewField label="Gender" value={values.gender} />
-          <PreviewField label="Age Range" value={values.ageRange?.join(", ")} />
-          <PreviewField label="Interest" value={values.interest?.join(", ")} />
-        </div>
-        <h3 style={{ fontSize: 22, fontWeight: 600, margin: "32px 0 16px 0" }}>
-          Fees Table
-        </h3>
-        {Array.isArray(values.interestFeesTable) &&
-        values.interestFeesTable.length > 0 ? (
-          <table
-            style={{
-              width: "100%",
-              background: "#fff",
-              borderRadius: 8,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-              marginBottom: 32,
-            }}
-          >
-            <thead>
-              <tr
-                style={{
-                  background: "#f4f4f7",
-                  color: "#666",
-                  fontWeight: 600,
-                }}
-              >
-                {Object.keys(
-                  values.interestFeesTable[0] as Record<string, any>
-                ).map((col: string) => (
-                  <th
-                    key={col}
-                    style={{
-                      padding: "10px 12px",
-                      textAlign: "left",
-                      borderBottom: "1px solid #eee",
-                    }}
-                  >
-                    {col
-                      .replace(/([A-Z])/g, " $1")
-                      .replace(/^./, (str) => str.toUpperCase())}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(
-                values.interestFeesTable as Array<
-                  Record<string, string | number | null>
-                >
-              ).map(
-                (row: Record<string, string | number | null>, idx: number) => (
-                  <tr key={idx}>
-                    {Object.values(row).map((cell, i) => (
-                      <td
-                        key={i}
-                        style={{
-                          padding: "10px 12px",
-                          borderBottom: "1px solid #f4f4f7",
-                          color: "#222",
-                        }}
-                      >
-                        {cell !== undefined && cell !== null && cell !== ""
-                          ? cell
-                          : "—"}
-                      </td>
-                    ))}
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
-        ) : (
-          <div style={{ color: "#bbb", marginBottom: 32 }}>
-            No interest fees table data.
-          </div>
-        )}
       </div>
 
       <SuccessModal
