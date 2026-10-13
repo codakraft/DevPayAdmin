@@ -44,7 +44,7 @@ export default function AllLoan() {
       <div className={styles.headerFlex}>
         <div>
           <h1>All Loan</h1>
-          <p>Here is a view of your pending loan requests</p>
+          <p>Here is a view of your active and rejected loans</p>
         </div>
 
         {/* <Link to="/ads-management/create" className={styles.createAddLink}>

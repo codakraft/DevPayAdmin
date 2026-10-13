@@ -4,99 +4,6 @@ import TablePagination, { usePagination } from "../../../components/TablePaginat
 import styles from "./AdsTable.module.css";
 import { LoanRequest } from "../loanRequest/components/loanTable";
 
-const dummyData = [
-  {
-    id: 1,
-    BVN: "32345678901",
-    firstName: "Fayemi",
-    lastName: "Kayode",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-03",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 5000,
-    amountRequested: 10000,
-    email: "fayemi.kayode@example.com",
-    status: "Active",
-  },
-  {
-    id: 2,
-    BVN: "22245678901",
-    firstName: "John",
-    lastName: "Alimi",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-15",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 7500,
-    amountRequested: 15000,
-    email: "john.alimi@example.com",
-    status: "Pending",
-  },
-  {
-    id: 3,
-    BVN: "22345678901",
-    firstName: "Elijah",
-    lastName: "Akinpelu",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-20",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 3000,
-    amountRequested: 8000,
-    email: "elijah.akinpelu@example.com",
-    status: "Rejected",
-  },
-  {
-    id: 4,
-    BVN: "22145678901",
-    firstName: "Emeka",
-    lastName: "Emmanuel",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-25",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 12000,
-    amountRequested: 20000,
-    email: "emeka.emmanuel@example.com",
-    status: "Active",
-  },
-  {
-    id: 5,
-    BVN: "21345678901",
-    firstName: "Aliyu",
-    lastName: "Abubakar",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-27",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 8500,
-    amountRequested: 12000,
-    email: "aliyu.abubakar@example.com",
-    status: "Active",
-  },
-  {
-    id: 6,
-    BVN: "32345678901",
-    firstName: "Sarah",
-    lastName: "Johnson",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-01",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 6000,
-    amountRequested: 11000,
-    email: "sarah.johnson@example.com",
-    status: "Active",
-  },
-];
-
 interface LoanRequestTableProps {
   data: LoanRequest[];
   onStatusChange?: (status: string) => void;
@@ -106,19 +13,11 @@ export default function AllLoanTable({
   data,
   onStatusChange,
 }: LoanRequestTableProps) {
-  const [selected, setSelected] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  // Loan status codes: 2 = Approved (Active), 4 = Rejected
   const [statusFilter, setStatusFilter] = useState("2");
   const [dateFilter, setDateFilter] = useState("");
   const navigate = useNavigate();
-
-  console.log("dataloanActive", data);
-
-  const toggleOne = (id: number) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
 
   const handleRowClick = (row: LoanRequest) => {
     // Prevent navigation when clicking on checkbox or ellipsis button
@@ -130,32 +29,22 @@ export default function AllLoanTable({
     navigate(`/dashboard/loans/${row.id}`, { state: { row } });
   };
 
-  // Filter data based on search query, status filter, and date filter
+  // Filter data based on search query and date filter.
+  // The status filter is applied server-side via onStatusChange.
   const filteredData = useMemo(() => {
     return data.filter((loan) => {
-      // ...existing code...
       const searchMatch =
         searchQuery === "" ||
         loan.userFirstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         loan.userLastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         loan.userEmail.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Status filter
-      // '2' means All Status, otherwise match the statusDisplay or status code
-      let statusMatch = true;
-      if (statusFilter !== "2") {
-        // Try to match both statusDisplay and status code (as string or number)
-        statusMatch =
-          loan.statusDisplay === statusFilter ||
-          String(loan.status) === statusFilter;
-      }
-
       // Date filter
       const dateMatch = dateFilter === "" || loan.createdAt === dateFilter;
 
-      return searchMatch && statusMatch && dateMatch;
+      return searchMatch && dateMatch;
     });
-  }, [searchQuery, statusFilter, dateFilter, data]);
+  }, [searchQuery, dateFilter, data]);
   const { pageItems, paginationProps } = usePagination(filteredData);
 
   // Notify parent when statusFilter changes
@@ -164,13 +53,6 @@ export default function AllLoanTable({
       onStatusChange(statusFilter);
     }
   }, [statusFilter, onStatusChange]);
-
-  const isAllSelected =
-    selected.length === filteredData.length && filteredData.length > 0;
-
-  const toggleAll = () => {
-    setSelected(isAllSelected ? [] : filteredData.map((row) => Number(row.id)));
-  };
 
   const exportToCSV = () => {
     const headers = [
@@ -188,7 +70,7 @@ export default function AllLoanTable({
       loan.userEmail,
       `₦${loan.amount.toLocaleString()}`,
       loan.createdAt,
-      loan.status,
+      loan.statusDisplay,
     ]);
 
     const csvContent = [headers, ...csvData]
@@ -208,8 +90,6 @@ export default function AllLoanTable({
     link.click();
     document.body.removeChild(link);
   };
-
-  console.log("Filtered Data:", filteredData);
 
   return (
     <div>
@@ -231,10 +111,8 @@ export default function AllLoanTable({
             onChange={(e) => setStatusFilter(e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="2">All Status</option>
-            <option value="4">Active</option>
-            <option value="0">Pending</option>
-            <option value="3">Rejected</option>
+            <option value="2">Active</option>
+            <option value="4">Rejected</option>
           </select>
 
           <input
@@ -248,11 +126,10 @@ export default function AllLoanTable({
             Export CSV
           </button>
 
-          {(searchQuery || statusFilter !== "0" || dateFilter) && (
+          {(searchQuery || dateFilter) && (
             <button
               onClick={() => {
                 setSearchQuery("");
-                setStatusFilter("0");
                 setDateFilter("");
               }}
               className={styles.clearFilters}
@@ -267,13 +144,6 @@ export default function AllLoanTable({
         <table className={styles.customTable}>
           <thead>
             <tr>
-              <th>
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  onChange={toggleAll}
-                />
-              </th>
               <th>Date Created</th>
               <th>First Name</th>
               <th>Last name</th>
@@ -292,13 +162,6 @@ export default function AllLoanTable({
                 onClick={() => handleRowClick(row)}
                 className={styles.clickableRow}
               >
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(Number(row.id))}
-                    onChange={() => toggleOne(Number(row.id))}
-                  />
-                </td>
                 <td>
                   <div className={styles.adDetails}>
                     {/* <img src={row.image} alt={row.title} /> */}
@@ -335,7 +198,7 @@ export default function AllLoanTable({
             ))}
             {filteredData.length === 0 && (
               <tr>
-                <td colSpan={11} className={styles.noResults}>
+                <td colSpan={9} className={styles.noResults}>
                   No loans found matching your search criteria.
                 </td>
               </tr>

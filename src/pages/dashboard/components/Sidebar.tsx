@@ -63,7 +63,7 @@ const dropdownMenus: Record<string, SubMenuItem[]> = {
   disbursements: [
     {
       id: "disburse",
-      label: "Disburse",
+      label: "Pending Disbursement",
       path: "/disbursements/disburse",
       permission: Permissions.LoansDisburse,
     },
