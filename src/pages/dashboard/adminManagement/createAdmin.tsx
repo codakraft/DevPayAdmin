@@ -6,6 +6,24 @@ import { formatRoleName, getPasswordError } from "../../../helpers";
 import { getErrorMessage } from "../../../helpers/auth";
 import useRoleOptions from "./useRoleOptions";
 
+const EyeIcon = ({ off }: { off?: boolean }) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+    {off && <line x1="2" y1="2" x2="22" y2="22" />}
+  </svg>
+);
+
 function CreateAdmin() {
   // Form state
   const [formData, setFormData] = useState({
@@ -13,6 +31,7 @@ function CreateAdmin() {
     lastName: "",
     email: "",
     password: "",
+    confirmPassword: "",
     role: "",
   });
 
@@ -22,6 +41,7 @@ function CreateAdmin() {
     lastName: "",
     email: "",
     password: "",
+    confirmPassword: "",
     role: "",
   });
 
@@ -34,6 +54,9 @@ function CreateAdmin() {
   const [createUser, { isLoading: creatingUser }] = useCreateUserMutation();
 
   const navigate = useNavigate();
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Form submission state
   const [submitting, setSubmitting] = useState(false);
@@ -98,6 +121,15 @@ function CreateAdmin() {
       valid = false;
     }
 
+    // Validate confirm password
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm the password";
+      valid = false;
+    } else if (formData.confirmPassword !== formData.password) {
+      newErrors.confirmPassword = "Passwords do not match";
+      valid = false;
+    }
+
     // Validate role
     if (!formData.role) {
       newErrors.role = "Role is required";
@@ -114,7 +146,8 @@ function CreateAdmin() {
     if (validateForm()) {
       setSubmitting(true);
       try {
-        await createUser(formData).unwrap();
+        const { confirmPassword, ...payload } = formData;
+        await createUser(payload).unwrap();
         setSubmitSuccess(true);
         setSubmitting(false);
         navigate("/admin-management");
@@ -145,7 +178,11 @@ function CreateAdmin() {
 
       <div className="users-section">
         <div className="admin-form-container">
-          <form onSubmit={handleSubmit} className="admin-creation-form">
+          <form
+            onSubmit={handleSubmit}
+            className="admin-creation-form"
+            autoComplete="off"
+          >
             <div className="form-group">
               <label htmlFor="firstName">
                 First Name <span className="required-mark">*</span>
@@ -190,6 +227,7 @@ function CreateAdmin() {
                 type="email"
                 id="email"
                 name="email"
+                autoComplete="off"
                 placeholder="James@japaflex.com"
                 value={formData.email}
                 onChange={handleInputChange}
@@ -204,15 +242,26 @@ function CreateAdmin() {
               <label htmlFor="password">
                 Password <span className="required-mark">*</span>
               </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleInputChange}
-                className={errors.password ? "input-error" : ""}
-              />
+              <div className="password-input-wrapper">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={errors.password ? "input-error" : ""}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  <EyeIcon off={showPassword} />
+                </button>
+              </div>
               {errors.password ? (
                 <div className="error-message">{errors.password}</div>
               ) : (
@@ -220,6 +269,37 @@ function CreateAdmin() {
                   At least 8 characters, with an uppercase letter, a lowercase
                   letter, a number and a special character.
                 </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="confirmPassword">
+                Confirm Password <span className="required-mark">*</span>
+              </label>
+              <div className="password-input-wrapper">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  className={errors.confirmPassword ? "input-error" : ""}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  aria-label={
+                    showConfirmPassword ? "Hide password" : "Show password"
+                  }
+                >
+                  <EyeIcon off={showConfirmPassword} />
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <div className="error-message">{errors.confirmPassword}</div>
               )}
             </div>
 

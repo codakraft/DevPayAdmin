@@ -25,13 +25,28 @@ const Disburse: React.FC = () => {
 
   const fetchLoans = React.useCallback(async () => {
     try {
-      const response = await getLoans({ status: [9, 2] }).unwrap();
-      console.log("Fetched approved loans:", response.data);
-      if (response?.data?.loans) {
-        setLoans(Array.isArray(response.data.loans) ? response.data.loans : []);
-      } else if (response?.data) {
-        setLoans(Array.isArray(response.data) ? response.data : []);
-      }
+      const [approvedResponse, signedResponse] = await Promise.all([
+        getLoans({ status: 2 }).unwrap(),
+        getLoans({ status: 9 }).unwrap(),
+      ]);
+
+      const extractLoans = (response: any) =>
+        Array.isArray(response?.data?.loans)
+          ? response.data.loans
+          : Array.isArray(response?.data)
+            ? response.data
+            : [];
+
+      const combined = [
+        ...extractLoans(approvedResponse),
+        ...extractLoans(signedResponse),
+      ];
+      const uniqueLoans = Array.from(
+        new Map(combined.map((loan) => [loan.id, loan])).values(),
+      );
+
+      console.log("Fetched approved loans:", uniqueLoans);
+      setLoans(uniqueLoans);
     } catch (error) {
       console.error("Failed to fetch approved loans:", error);
       setLoans([]);
@@ -95,6 +110,8 @@ const Disburse: React.FC = () => {
             Offer Letter Signed
           </span>
         );
+      case 2:
+        return <span className="status-badge status-approved">Approved</span>;
       default:
         return <span className="status-badge status-unknown">Unknown</span>;
     }

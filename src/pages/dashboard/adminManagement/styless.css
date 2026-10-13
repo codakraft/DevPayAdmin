@@ -699,3 +699,25 @@
     padding: 0;
   }
 }
+
+.password-input-wrapper {
+  position: relative;
+}
+
+.form-group .password-input-wrapper input {
+  padding-right: 40px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: #6B7280;
+  cursor: pointer;
+}

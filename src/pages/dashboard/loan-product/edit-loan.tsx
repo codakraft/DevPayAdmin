@@ -9,6 +9,12 @@ import PreviewComponent from "../adsManagement/PreviewComponent";
 import AdvertDetails from "../adsManagement/AdvertDetails";
 import SuccessModal from "../../../ui/components/modal/SuccessModal";
 import styles from "./styles.module.css";
+import { getErrorMessage } from "../../../helpers/auth";
+import {
+  buildLoanProductBody,
+  LoanProductFormValues,
+  validateLoanProduct,
+} from "./loanProductRequest";
 import { useUpdateLoanProductMutation } from "../../../store/apiSlice";
 
 const steps = [
@@ -29,46 +35,6 @@ const steps = [
   },
 ];
 
-interface InterestFee {
-  id: string;
-  name: string;
-  amount: string;
-}
-
-interface LoanProductData {
-  ageRange: string[];
-  allowMultipleLoans: boolean;
-  banner: any;
-  budget: string;
-  carousel: any[];
-  code: string;
-  cta: string;
-  days: string;
-  gender: string;
-  interest: string[];
-  interestComputationBasis: string;
-  interestComputationFrequency: string;
-  interestFeesTable: InterestFee[];
-  interestRate: number;
-  link: string;
-  maxAge: string;
-  maxLoanAmount: number;
-  maxTenor: number;
-  mediaType: string;
-  minAge: number;
-  minLoanAmount: string;
-  minTenor: number;
-  moratorium: number;
-  name: string | undefined;
-  notifyApprovers: boolean;
-  paymentScheduleBreakdown: string;
-  penaltyPercent: string;
-  title: string;
-  turnoverEligibility: string;
-  upload: any;
-  video: any;
-}
-
 export default function EditLoanProduct() {
   const [activeStep, setActiveStep] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -79,7 +45,7 @@ export default function EditLoanProduct() {
   // Get product data from location state or fetch from API
   const productFromState = location.state?.product;
 
-  const [createData, setCreateData] = useState<LoanProductData>();
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [updateLoanProduct, { isLoading }] = useUpdateLoanProductMutation();
 
   // Initial values from the product being edited
@@ -116,7 +82,7 @@ export default function EditLoanProduct() {
         interestComputationFrequency:
           productFromState.interestCostComputation?.toString() || "",
         interestComputationBasis:
-          productFromState.interestComputationBasis === 0 ? "flat" : "reducing",
+          productFromState.interestComputationBasis?.toString() || "",
         paymentScheduleBreakdown:
           productFromState.paymentScheduleBreakdown?.toString() || "",
         allowMultipleLoans: false,
@@ -160,47 +126,21 @@ export default function EditLoanProduct() {
     setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
   const handleBack = () => setActiveStep((prev) => Math.max(prev - 1, 0));
 
-  const handleOnFormSubmit = async () => {
-    console.log("Updating product", createData);
-    const requestBody = {
-      id: productFromState?.id || id,
-      name: createData?.name ?? "",
-      shortName: createData?.code ?? "",
-      description: "string",
-      interestRate: parseFloat(
-        Number(createData?.interestRate || 0).toFixed(1),
-      ),
-      minAmount: Number(createData?.minLoanAmount) ?? "",
-      maxAmount: Number(createData?.maxLoanAmount) ?? "",
-      minTenor: Number(createData?.minTenor) ?? "",
-      maxTenor: Number(createData?.maxTenor) ?? "",
-      moratorium: Number(createData?.moratorium) ?? "",
-      code: createData?.code ?? "",
-      penaltyOnDefaultPrincipal: parseFloat(
-        Number(createData?.penaltyPercent || 0).toFixed(1),
-      ),
-      notifyApprovalsViaEmail: createData?.notifyApprovers ?? false,
-      turnoverEligibilityPercent: parseFloat(
-        Number(createData?.turnoverEligibility || 0).toFixed(1),
-      ),
-      interestComputationBasis:
-        createData?.interestComputationBasis === "flat" ? 0 : 1,
-      interestCostComputation:
-        Number(createData?.interestComputationFrequency) ?? 0,
-      paymentScheduleBreakdown: 0,
-      paymentScheduleType: 0,
-    };
-
-    console.log("Update request body", requestBody);
-
+  const handleOnFormSubmit = async (values: LoanProductFormValues) => {
+    setSubmitError(null);
+    const validationError = validateLoanProduct(values);
+    if (validationError) {
+      setSubmitError(validationError);
+      return;
+    }
     try {
-      const response = await updateLoanProduct(requestBody).unwrap();
-      console.log("Update response", response);
-      if (response.success) {
-        setShowSuccessModal(true);
-      }
+      await updateLoanProduct({
+        id: productFromState?.id || id,
+        ...buildLoanProductBody(values),
+      }).unwrap();
+      setShowSuccessModal(true);
     } catch (error) {
-      console.error("Error updating loan product:", error);
+      setSubmitError(getErrorMessage(error, "Failed to update loan product."));
     }
   };
 
@@ -240,11 +180,7 @@ export default function EditLoanProduct() {
         <Formik
           initialValues={initialValues}
           validationSchema={Yup.object({})}
-          onSubmit={(values) => {
-            console.log("Final Submission", values);
-            setCreateData(values as any);
-            window.dispatchEvent(new CustomEvent("loanProductUpdated"));
-          }}
+          onSubmit={(values) => handleOnFormSubmit(values)}
         >
           {({ values, setFieldValue }) => (
             <Form className={styles.form}>
@@ -259,6 +195,9 @@ export default function EditLoanProduct() {
               )}
               {activeStep === 2 && <PreviewComponent values={values} />}
 
+              {submitError && activeStep === steps.length - 1 && (
+                <p className={styles.submitError}>{submitError}</p>
+              )}
               <div className={styles.buttonGroup}>
                 {activeStep > 0 && (
                   <Button
@@ -276,7 +215,6 @@ export default function EditLoanProduct() {
                   </Button>
                 ) : (
                   <Button
-                    onClick={handleOnFormSubmit}
                     type="submit"
                     disabled={isLoading}
                   >

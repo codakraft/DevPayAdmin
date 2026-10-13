@@ -1,6 +1,5 @@
 import styles from "./DemographicComponent.module.css";
 import { AdFormValues } from "./formik-types/formikTypes";
-import { useState, useMemo } from "react";
 
 interface AdvertDetailsProps {
   values: AdFormValues;
@@ -11,133 +10,15 @@ interface AdvertDetailsProps {
   ) => void;
 }
 
-const Fees = [
-  {
-    id: "1",
-    name: "Legal Fees",
-    amount: "2%",
-  },
-  {
-    id: "2",
-    name: "Management Fees",
-    amount: "1%",
-  },
-  {
-    id: "3",
-    name: "Processing Fees",
-    amount: "0.5%",
-  },
-];
-
 export default function DemographicComponent({
   values,
   setFieldValue,
 }: AdvertDetailsProps) {
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  const handleInterestSelect = (interest: string) => {
-    if (values.interest.includes(interest)) return;
-    setFieldValue("interest", [...values.interest, interest]);
-    setShowDropdown(false);
-  };
-
-  const removeInterest = (interest: string) => {
-    setFieldValue(
-      "interest",
-      values.interest.filter((item) => item !== interest)
-    );
-  };
-
-  const selectedFees = useMemo(
-    () => values.interestFeesTable || [],
-    [values.interestFeesTable]
-  );
-
-  const isAllSelected = useMemo(
-    () => selectedFees.length === Fees.length && Fees.length > 0,
-    [selectedFees.length]
-  );
-
-  const toggleAll = () => {
-    if (isAllSelected) {
-      setFieldValue("interestFeesTable", []);
-    } else {
-      setFieldValue("interestFeesTable", Fees);
-    }
-  };
-
-  const toggleOne = (fee: { id: string; name: string; amount: string }) => {
-    const feeIndex = selectedFees.findIndex((f) => f.id === fee.id);
-    let newFees;
-    if (feeIndex > -1) {
-      newFees = selectedFees.filter((f) => f.id !== fee.id);
-    } else {
-      newFees = [...selectedFees, fee];
-    }
-    setFieldValue("interestFeesTable", newFees);
-  };
-
   return (
     <div className={styles.formContainer}>
-      <div className={styles.section}>
-        <p className={styles.labelUnderline}>Fees</p>
-        <div className={styles.radioGroup}>
-          {/* {GenderOptions.map((option) => (
-            <label
-              key={option}
-              className={`${styles.radioLabel} ${
-                values.gender === option ? styles.radioLabelSelected : ""
-              }`}
-            >
-              <input
-                type="radio"
-                name="gender"
-                value={option}
-                checked={values.gender === option}
-                onChange={() => setFieldValue("gender", option)}
-              />
-              {option}
-            </label>
-          ))} */}
-          <table className={styles.customTable}>
-            <thead>
-              <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={isAllSelected}
-                    onChange={toggleAll}
-                  />
-                </th>
-                <th>Name</th>
-                <th>Amount</th>
-                {/* <th>Processing Fee</th> */}
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {Fees.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selectedFees.some((f) => f.id === row.id)}
-                      onChange={() => toggleOne(row)}
-                    />
-                  </td>
-                  <td>{row.name}</td>
-                  <td>{row.amount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <div
         className={styles.section}
         style={{
-          marginTop: 32,
           background: "#faf9fd",
           padding: 24,
           borderRadius: 10,
@@ -195,7 +76,7 @@ export default function DemographicComponent({
                   type="radio"
                   name="interestComputationFrequency"
                   value="Per Month"
-                  checked={values.interestComputationFrequency === "Per Month"}
+                  checked={values.interestComputationFrequency === "0"}
                   onChange={() =>
                     setFieldValue("interestComputationFrequency", "0")
                   }
@@ -207,7 +88,7 @@ export default function DemographicComponent({
                   type="radio"
                   name="interestComputationFrequency"
                   value="Per Annum"
-                  checked={values.interestComputationFrequency === "Per Annum"}
+                  checked={values.interestComputationFrequency === "1"}
                   onChange={() =>
                     setFieldValue("interestComputationFrequency", "1")
                   }
@@ -227,9 +108,9 @@ export default function DemographicComponent({
               style={{ width: "100%" }}
             >
               <option value="">Select Basis</option>
-              <option value="Flat">Flat</option>
-              <option value="Reducing">Reducing</option>
-              <option value="Reducing Interest But Increasing Principal">
+              <option value="0">Flat</option>
+              <option value="1">Reducing</option>
+              <option value="2">
                 Reducing Interest But Increasing Principal
               </option>
             </select>
