@@ -120,7 +120,7 @@ const Disburse: React.FC = () => {
   return (
     <div className="disbursements-container">
       <div className="disbursements-header">
-        <h1>Disburse Loans</h1>
+        <h1>Pending Disbursement</h1>
         <p>Approved loans ready for disbursement</p>
       </div>
 

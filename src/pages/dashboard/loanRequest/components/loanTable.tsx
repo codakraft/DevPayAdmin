@@ -4,99 +4,6 @@ import { formatDate, parseApiDate } from "../../../../helpers";
 import TablePagination, { usePagination } from "../../../../components/TablePagination";
 import styles from "./loanTable.module.css";
 
-const dummyData = [
-  {
-    id: 1,
-    BVN: "32345678901",
-    firstName: "Fayemi",
-    lastName: "Kayode",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-03",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 5000,
-    amountRequested: 10000,
-    email: "fayemi.kayode@example.com",
-    status: "Pending",
-  },
-  {
-    id: 2,
-    BVN: "22245678901",
-    firstName: "John",
-    lastName: "Alimi",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-15",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 7500,
-    amountRequested: 15000,
-    email: "john.alimi@example.com",
-    status: "Approved",
-  },
-  {
-    id: 3,
-    BVN: "22345678901",
-    firstName: "Elijah",
-    lastName: "Akinpelu",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-20",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 3000,
-    amountRequested: 8000,
-    email: "elijah.akinpelu@example.com",
-    status: "Rejected",
-  },
-  {
-    id: 4,
-    BVN: "22145678901",
-    firstName: "Emeka",
-    lastName: "Emmanuel",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-25",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 12000,
-    amountRequested: 20000,
-    email: "emeka.emmanuel@example.com",
-    status: "Pending",
-  },
-  {
-    id: 5,
-    BVN: "21345678901",
-    firstName: "Aliyu",
-    lastName: "Abubakar",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-27",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 8500,
-    amountRequested: 12000,
-    email: "aliyu.abubakar@example.com",
-    status: "Approved",
-  },
-  {
-    id: 6,
-    BVN: "32345678901",
-    firstName: "Sarah",
-    lastName: "Johnson",
-    title: "Coca Cola",
-    subtitle: "Summer Time Ad",
-    dateCreated: "2025-06-01",
-    daysLeft: 12,
-    phone: "+234 123 4567",
-    loanAmount: 6000,
-    amountRequested: 11000,
-    email: "sarah.johnson@example.com",
-    status: "Pending",
-  },
-];
-
 export interface LoanRequest {
   amount: number;
   approvedAt: string | null;
@@ -125,24 +32,6 @@ export interface LoanRequest {
   userLastName: string;
 }
 
-// Badge colour per loan status (0 Pending, 1 Processing, 2 Approved, 3 Disbursed, 4 Rejected)
-const statusBadgeClass = (status: number) => {
-  switch (status) {
-    case 0:
-      return "statusPending";
-    case 1:
-      return "statusProcessing";
-    case 2:
-      return "statusApproved";
-    case 3:
-      return "statusDisbursed";
-    case 4:
-      return "statusRejected";
-    default:
-      return "statusOther";
-  }
-};
-
 type DatePreset = "all" | "today" | "7d" | "30d" | "custom";
 
 // "YYYY-MM-DD" in the viewer's time zone, comparable as a string
@@ -163,7 +52,6 @@ interface LoanRequestTableProps {
 
 export default function LoanRequestTable({ data }: LoanRequestTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
   const [datePreset, setDatePreset] = useState<DatePreset>("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -189,7 +77,7 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
   const hasDateFilter = dateRange !== null;
   const navigate = useNavigate();
 
-  // Filter data based on search query, status filter, and date filter
+  // Filter data based on search query and date filter
   const filteredData = useMemo(() => {
     return data.filter((loan) => {
       // Search by name (first, last or full) or email
@@ -199,10 +87,6 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
         query === "" ||
         fullName.toLowerCase().includes(query) ||
         (loan.userEmail ?? "").toLowerCase().includes(query);
-
-      // Status filter
-      const statusMatch =
-        statusFilter === "All" || loan.statusDisplay === statusFilter;
 
       // Date filter
       let dateMatch = true;
@@ -215,9 +99,9 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
           (!dateRange.to || day <= dateRange.to);
       }
 
-      return searchMatch && statusMatch && dateMatch;
+      return searchMatch && dateMatch;
     });
-  }, [searchQuery, statusFilter, dateRange, data]);
+  }, [searchQuery, dateRange, data]);
   const { pageItems, paginationProps } = usePagination(filteredData);
 
   const handleViewLoan = (row: LoanRequest) => {
@@ -231,7 +115,6 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
       "Email",
       "Amount Requested",
       "Date Created",
-      "Status",
     ];
 
     const csvData = filteredData.map((loan) => [
@@ -240,7 +123,6 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
       loan.userEmail,
       `₦${Number(loan.amount).toLocaleString()}`,
       formatDate(loan.createdAt),
-      loan.statusDisplay,
     ]);
 
     const csvContent = [headers, ...csvData]
@@ -281,17 +163,6 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
         </div>
 
         <div className={styles.filtersContainer}>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className={styles.filterSelect}
-          >
-            <option value="All">All Status</option>
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-          </select>
-
           <select
             value={datePreset}
             onChange={(e) => setDatePreset(e.target.value as DatePreset)}
@@ -334,11 +205,10 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
             Export CSV
           </button>
 
-          {(searchQuery || statusFilter !== "All" || hasDateFilter) && (
+          {(searchQuery || hasDateFilter) && (
             <button
               onClick={() => {
                 setSearchQuery("");
-                setStatusFilter("All");
                 setDatePreset("all");
                 setStartDate("");
                 setEndDate("");
@@ -362,7 +232,6 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
               <th>Loan Purpose</th>
               <th>Loan Amount</th>
               <th>Loan Duration</th>
-              <th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -393,20 +262,11 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
                 <td>{row.purpose}</td>
                 <td>₦{row.amount.toLocaleString()}</td>
                 <td>{row.durationInMonths} Months</td>
-                <td>
-                  <span
-                    className={`${styles.badge} ${
-                      styles[statusBadgeClass(row.status)]
-                    }`}
-                  >
-                    {row.statusDisplay}
-                  </span>
-                </td>
               </tr>
             ))}
             {filteredData.length === 0 && (
               <tr>
-                <td colSpan={8} className={styles.noResults}>
+                <td colSpan={7} className={styles.noResults}>
                   No loan requests found matching your search criteria.
                 </td>
               </tr>
