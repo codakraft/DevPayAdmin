@@ -87,7 +87,7 @@ const DisbursementDetails: React.FC = () => {
             Offer Letter Signed
           </span>
         );
-      case 3:
+      case 4:
         return <span className="status-badge status-disbursed">Disbursed</span>;
       default:
         return <span className="status-badge status-unknown">Unknown</span>;
@@ -104,7 +104,7 @@ const DisbursementDetails: React.FC = () => {
       if (response.success) {
         setShowSuccessModal(true);
         // Update loan status locally
-        setLoan({ ...loan, status: 3 });
+        setLoan({ ...loan, status: 4 });
 
         // Navigate to all disbursements after a short delay
         setTimeout(() => {

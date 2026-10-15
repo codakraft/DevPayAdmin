@@ -26,11 +26,6 @@ export const formatCurrency = (amount: number, currency: string = '₦'): string
 };
 
 /**
- * Utility function to format date strings
- * @param date - Date string or Date object
- * @returns Formatted date string
- */
-/**
  * Parses an API timestamp. The API sends UTC times without an offset
  * (e.g. 2026-03-09T19:43:08.5413631), which browsers would read as local time
  * (an hour behind in Lagos), so treat offset-less times as UTC. Also trims the
@@ -45,14 +40,18 @@ export const parseApiDate = (value: string | Date): Date => {
   return new Date(text);
 };
 
+/**
+ * Formats an API timestamp as a date
+ * @returns e.g. "03 Oct 2026", or "-" when missing/invalid
+ */
 export const formatDate = (date: string | Date | null | undefined): string => {
   if (!date) return '-';
   const dateObj = parseApiDate(date);
   if (isNaN(dateObj.getTime())) return '-';
-  return dateObj.toLocaleDateString('en-US', {
-    year: 'numeric',
+  return dateObj.toLocaleDateString('en-GB', {
+    day: '2-digit',
     month: 'short',
-    day: 'numeric'
+    year: 'numeric',
   });
 };
 
@@ -115,17 +114,18 @@ export const truncateText = (text: string, maxLength: number): string => {
 
 /**
  * Formats an API timestamp as date and time in the viewer's time zone
- * @returns e.g. "Mar 9, 2026, 8:43 PM", or "-" when missing/invalid
+ * @returns e.g. "09 Mar 2026, 8:43 pm", or "-" when missing/invalid
  */
 export const formatDateTime = (date: string | Date | null | undefined): string => {
   if (!date) return '-';
   const dateObj = parseApiDate(date);
   if (isNaN(dateObj.getTime())) return '-';
-  return dateObj.toLocaleString('en-US', {
-    year: 'numeric',
+  return dateObj.toLocaleString('en-GB', {
+    day: '2-digit',
     month: 'short',
-    day: 'numeric',
+    year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
   });
 };

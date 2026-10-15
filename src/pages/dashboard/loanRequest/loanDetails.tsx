@@ -188,10 +188,15 @@ const LoanDetails = () => {
   const getStatusDisplay = (status: number) => {
     const statusMap: Record<number, string> = {
       0: "Pending",
-      1: "Processing",
+      1: "Not Booked",
       2: "Approved",
-      3: "Disbursed",
-      4: "Rejected",
+      3: "Rejected",
+      4: "Disbursed",
+      5: "Repaid",
+      6: "Overdue",
+      7: "Cancelled",
+      8: "Offer Letter Sent",
+      9: "Offer Letter Signed",
     };
     return statusMap[status] || "Unknown";
   };

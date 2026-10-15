@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import TablePagination, { usePagination } from "../../../components/TablePagination";
 import styles from "./AdsTable.module.css";
 import { LoanRequest } from "../loanRequest/components/loanTable";
+import { formatDate } from "../../../helpers";
 
 interface LoanRequestTableProps {
   data: LoanRequest[];
@@ -14,7 +15,7 @@ export default function AllLoanTable({
   onStatusChange,
 }: LoanRequestTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  // Loan status codes: 2 = Approved (Active), 4 = Rejected
+  // Loan status codes (backend LoanStatus enum): 2 = Approved (Active), 3 = Rejected
   const [statusFilter, setStatusFilter] = useState("2");
   const [dateFilter, setDateFilter] = useState("");
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ export default function AllLoanTable({
       loan.userLastName,
       loan.userEmail,
       `₦${loan.amount.toLocaleString()}`,
-      loan.createdAt,
+      formatDate(loan.createdAt),
       loan.statusDisplay,
     ]);
 
@@ -111,8 +112,8 @@ export default function AllLoanTable({
             onChange={(e) => setStatusFilter(e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="2">Active</option>
-            <option value="4">Rejected</option>
+            <option value="2">Approved</option>
+            <option value="3">Rejected</option>
           </select>
 
           <input
@@ -167,7 +168,7 @@ export default function AllLoanTable({
                     {/* <img src={row.image} alt={row.title} /> */}
                     <div>
                       {/* <strong>{row.dateCreated}</strong> */}
-                      <p>{row.createdAt}</p>
+                      <p>{formatDate(row.createdAt)}</p>
                     </div>
                   </div>
                 </td>

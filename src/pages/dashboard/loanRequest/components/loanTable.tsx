@@ -246,13 +246,7 @@ export default function LoanRequestTable({ data }: LoanRequestTableProps) {
                     {/* <img src={row.image} alt={row.title} /> */}
                     <div>
                       {/* <strong>{row.dateCreated}</strong> */}
-                      <p>
-                        {new Date(row.createdAt).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </p>
+                      <p>{formatDate(row.createdAt)}</p>
                     </div>
                   </div>
                 </td>
