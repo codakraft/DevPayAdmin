@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLazyGetLoansQuery } from "../../../store/apiSlice";
 import "./disbursements.css";
+import { formatDate } from "../../../helpers";
 
 interface Loan {
   id: string;
@@ -62,15 +63,6 @@ const AllDisbursements: React.FC = () => {
     startIndex + itemsPerPage
   );
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-NG", {

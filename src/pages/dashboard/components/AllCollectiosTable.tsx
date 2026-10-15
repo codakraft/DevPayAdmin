@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import TablePagination, { usePagination } from "../../../components/TablePagination";
 import styles from "./AdsTable.module.css";
 import { LoanRequest } from "../loanRequest/components/loanTable";
+import { formatDate } from "../../../helpers";
 
 const dummyData = [
   {
@@ -78,16 +79,10 @@ interface LoanRequestTableProps {
 }
 
 export default function AllCollectionsTable({ data }: LoanRequestTableProps) {
-  const [selected, setSelected] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const navigate = useNavigate();
 
-  const toggleOne = (id: number) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
 
   const handleRowClick = (loanId: number, event: React.MouseEvent) => {
     // Prevent navigation when clicking on checkbox or ellipsis button
@@ -116,12 +111,6 @@ export default function AllCollectionsTable({ data }: LoanRequestTableProps) {
   }, [searchQuery, dateFilter, data]);
   const { pageItems, paginationProps } = usePagination(filteredData);
 
-  const isAllSelected =
-    selected.length === filteredData.length && filteredData.length > 0;
-
-  const toggleAll = () => {
-    setSelected(isAllSelected ? [] : filteredData.map((row) => Number(row.id)));
-  };
 
   const exportToCSV = () => {
     // Define CSV headers
@@ -141,7 +130,7 @@ export default function AllCollectionsTable({ data }: LoanRequestTableProps) {
       headers.join(","), // Header row
       ...filteredData.map((row) =>
         [
-          row.createdAt,
+          formatDate(row.createdAt),
           `"${row.userFullName}"`, // Wrap in quotes to handle names with commas
           // row.accountNo,
           row.amount,
@@ -216,13 +205,6 @@ export default function AllCollectionsTable({ data }: LoanRequestTableProps) {
         <table className={styles.customTable}>
           <thead>
             <tr>
-              <th>
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  onChange={toggleAll}
-                />
-              </th>
               <th>Date Created</th>
               <th>Name</th>
               {/* <th>Account No.</th> */}
@@ -241,17 +223,10 @@ export default function AllCollectionsTable({ data }: LoanRequestTableProps) {
                 onClick={(e) => handleRowClick(Number(row.id), e)}
                 className={styles.clickableRow}
               >
-                <td onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(Number(row.id))}
-                    onChange={() => toggleOne(Number(row.id))}
-                  />
-                </td>
                 <td>
                   <div className={styles.adDetails}>
                     <div>
-                      <p>{row.createdAt}</p>
+                      <p>{formatDate(row.createdAt)}</p>
                     </div>
                   </div>
                 </td>
@@ -274,7 +249,7 @@ export default function AllCollectionsTable({ data }: LoanRequestTableProps) {
             ))}
             {filteredData.length === 0 && (
               <tr>
-                <td colSpan={9} className={styles.noResults}>
+                <td colSpan={8} className={styles.noResults}>
                   No collections found matching your search criteria.
                 </td>
               </tr>

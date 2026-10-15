@@ -5,7 +5,7 @@ import {
   useLazyGetAuditTrailQuery,
 } from "../../../store/apiSlice";
 import TablePagination from "../../../components/TablePagination";
-import { parseApiDate } from "../../../helpers";
+import { formatDateTime } from "../../../helpers";
 
 // Badge colours by category value
 const CATEGORY_COLORS: Record<string, { background: string; color: string }> = {
@@ -122,7 +122,7 @@ export default function AuditTable() {
       headers.join(","), // Header row
       ...filteredData.map((row: any) =>
         [
-          `"${parseApiDate(row.timestamp).toLocaleString()}"`,
+          `"${formatDateTime(row.timestamp)}"`,
           `"${getUserLabel(row)}"`,
           `"${row.action || 'N/A'}"`,
           `"${categoryLabels.get(row.category) || row.category || 'N/A'}"`,
@@ -229,14 +229,7 @@ export default function AuditTable() {
                     <td>
                       <div className={styles.adDetails}>
                         <div>
-                          <p>{parseApiDate(row.timestamp).toLocaleString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                          })}</p>
+                          <p>{formatDateTime(row.timestamp)}</p>
                         </div>
                       </div>
                     </td>
