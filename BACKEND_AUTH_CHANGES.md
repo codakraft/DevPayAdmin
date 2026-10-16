@@ -294,6 +294,7 @@ names, so the frontend doesn't need updating when it does.
 | `company/dashboard` | `company.view` | dashboard |
 | `company/loan-products` | `products.view` | loan products page |
 | `company/product/create`, `PUT company/loan-product/{id}` | `products.manage` | create/edit product buttons |
+| `POST company/loan-product/{id}/activate`, `POST company/loan-product/{id}/deactivate` | `products.manage` | activate/deactivate product action (see [Loan product activation](#loan-product-activation-2026-10-15)) |
 | `company/loans`, `company/loans/{id}` | `loans.view` | loan request pages |
 | `POST loan/{id}/approve`, `POST loan/{id}/reject` | `loans.approve` | approve / reject buttons |
 | `POST loan/{id}/disburse` | `loans.disburse` | disburse button |
@@ -1034,3 +1035,63 @@ isn't needed. A Pending row that the webhook completes shows as completed the ne
 
 **Remaining for the backend:** post here when part 4 (and the schema script) is on staging. We'll then test
 funding, declining, cancelling, refreshing `/payment-success`, and the ₦1,000 minimum end to end.
+
+---
+
+## Loan product activation (2026-10-15)
+
+Pushed to the backend's `dev` branch on 2026-10-15. Post here once it's on staging.
+
+### Why
+Every loan product shows **Inactive** because the backend had no way to change `isActive`.
+Products are created inactive and nothing ever set the flag. You can now activate and deactivate them.
+
+### Endpoints
+
+| Endpoint | Who | Permission |
+|---|---|---|
+| `POST company/loan-product/{productId}/activate` | company users | `products.manage` |
+| `POST company/loan-product/{productId}/deactivate` | company users | `products.manage` |
+| `POST admin/loan-products/{productId}/activate` | SuperAdmin | `SuperAdmin` role |
+| `POST admin/loan-products/{productId}/deactivate` | SuperAdmin | `SuperAdmin` role |
+
+- No request body.
+- The `company/...` endpoints only work on the user's own company's products. Use these in this app.
+- The `admin/...` endpoints work on any company's product. They're for a SuperAdmin view of all products, if you add one.
+- Calling either endpoint again is safe. Activating an active product just returns `200` again.
+
+### Responses
+Standard envelope. `data` is the same `LoanProductResponseDto` that `GET`/`PUT company/loan-product/{id}` return,
+with the new `isActive`:
+
+```json
+{ "success": true, "message": "Loan product activated successfully", "data": { "id": "…", "isActive": true, "…": "…" } }
+```
+
+The deactivate message is `"Loan product deactivated successfully"`.
+
+| Status | When |
+|---|---|
+| `200` | Done. Use `data.isActive` to update the row. |
+| `401` | Token expired or invalidated. Handled by the existing refresh flow (§1). |
+| `403` | Missing `products.manage` (or the `SuperAdmin` role, on `admin/...`). |
+| `404` | `"Loan product not found"`. Either the ID doesn't exist or the product belongs to another company. |
+| `500` | `"An unexpected error occurred"` |
+
+### Behaviour to know
+- **New products are still created inactive** (`isActive: false`). After creating a product, the user has to
+  activate it. Consider offering "Activate now" after create, or a clear prompt on the row.
+- **`isActive` isn't enforced yet.** Borrowers can still apply for an inactive product. For now it's only a
+  status label and a filter.
+- `PUT company/loan-product/{id}` still ignores `isActive`. Sending it there does nothing. Use the endpoints above.
+- The list endpoint already supports filtering: `GET company/loan-products?isActive=true|false`.
+
+### Frontend to-do
+- [x] Add `activateLoanProduct` / `deactivateLoanProduct` mutations to `apiSlice.ts`. The list is held in local state
+      (`loanProduct.tsx`), not the RTK cache, so the row is updated from the response `data` instead of invalidating tags.
+- [x] In `product-table.tsx`, replace the placeholder "Disable" menu item with Activate/Deactivate based on
+      `row.isActive` (the menu is already limited to `products.manage`).
+- [x] Confirm before deactivating and show errors, following `useAdminUserActions.setActive` (the app has no toasts).
+- [ ] Optionally add an Active/Inactive filter to the products page using `isActive`.
+- [ ] Backend question: does `POST company/product/create` return the new product's `id`? Needed for "Activate now".
+  - **Backend answer:** yes. `data` is the full `LoanProductResponseDto`, so `data.id` is the new product's ID (and `data.isActive` is `false`).

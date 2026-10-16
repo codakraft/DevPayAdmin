@@ -208,6 +208,19 @@ export const apiSlice = createApi({
         body,
       }),
     }),
+    // Both return the updated product in `data`; calling either again is a no-op
+    activateLoanProduct: builder.mutation<any, { id: string }>({
+      query: ({ id }) => ({
+        url: `company/loan-product/${id}/activate`,
+        method: "POST",
+      }),
+    }),
+    deactivateLoanProduct: builder.mutation<any, { id: string }>({
+      query: ({ id }) => ({
+        url: `company/loan-product/${id}/deactivate`,
+        method: "POST",
+      }),
+    }),
     getRoles: builder.query<{ success: boolean; message: string; data: RoleOption[] }, void>({
       query: () => ({
         url: `admin/roles`,
@@ -426,6 +439,8 @@ export const {
   useLazyGetLoanProductQuery,
   useCreateLoanProductMutation,
   useUpdateLoanProductMutation,
+  useActivateLoanProductMutation,
+  useDeactivateLoanProductMutation,
   useLazyGetLoansQuery,
   useLazyGetCompanyDashboardQuery,
   useGetAdminUserQuery,
