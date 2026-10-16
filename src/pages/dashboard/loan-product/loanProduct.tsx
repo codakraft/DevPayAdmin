@@ -79,7 +79,18 @@ export default function LoanProduct() {
           </style>
         </div>
       ) : data ? (
-        <LoanTable data={data?.loanProducts} />
+        <LoanTable
+          data={data?.loanProducts}
+          onProductChange={(updated) =>
+            setData((prev) =>
+              prev && {
+                loanProducts: prev.loanProducts.map((p) =>
+                  p.id === updated.id ? updated : p,
+                ),
+              },
+            )
+          }
+        />
       ) : null}
       {/* <LoanTable /> */}
     </>

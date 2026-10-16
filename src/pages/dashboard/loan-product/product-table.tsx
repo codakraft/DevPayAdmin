@@ -5,7 +5,11 @@ import TablePagination, {
 } from "../../../components/TablePagination";
 import styles from "./productTable.module.css";
 import { useAuth } from "../../../context/AuthContext";
-import { Permissions } from "../../../helpers/auth";
+import { Permissions, getErrorMessage } from "../../../helpers/auth";
+import {
+  useActivateLoanProductMutation,
+  useDeactivateLoanProductMutation,
+} from "../../../store/apiSlice";
 
 interface LoanDataProp {
   id: string;
@@ -33,16 +37,50 @@ interface LoanDataProp {
 
 interface LoanData {
   data: LoanDataProp[];
+  // Called with the product the backend returns after a status change
+  onProductChange?: (product: LoanDataProp) => void;
 }
 // const UsersTable: React.FC<UsersTableProps> = ({ users }) => {
 // export default function LoanTable() {
-const LoanTable: React.FC<LoanData> = ({ data }) => {
+const LoanTable: React.FC<LoanData> = ({ data, onProductChange }) => {
   const rows = useMemo(() => data ?? [], [data]);
   const { pageItems, paginationProps } = usePagination(rows);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { can } = useAuth();
   const canManageProducts = can(Permissions.ProductsManage);
+
+  const [activateLoanProduct] = useActivateLoanProductMutation();
+  const [deactivateLoanProduct] = useDeactivateLoanProductMutation();
+
+  const handleToggleActive = async (row: LoanDataProp) => {
+    setMenuOpenId(null);
+    const active = !row.isActive;
+    // isActive is only a label for now: the backend still accepts applications for inactive products
+    if (
+      !active &&
+      !window.confirm(`Deactivate ${row.name}? It will be marked as inactive.`)
+    ) {
+      return;
+    }
+    setBusyId(row.id);
+    try {
+      const res = active
+        ? await activateLoanProduct({ id: row.id }).unwrap()
+        : await deactivateLoanProduct({ id: row.id }).unwrap();
+      onProductChange?.({ ...row, ...res?.data, isActive: res?.data?.isActive ?? active });
+    } catch (error) {
+      alert(
+        getErrorMessage(
+          error,
+          `Failed to ${active ? "activate" : "deactivate"} loan product`
+        )
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   // Close menu on outside click
   React.useEffect(() => {
@@ -110,6 +148,7 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
                         onClick={() =>
                           setMenuOpenId(menuOpenId === row.id ? null : row.id)
                         }
+                        disabled={busyId === row.id}
                         type="button"
                       >
                         ...
@@ -159,15 +198,11 @@ const LoanTable: React.FC<LoanData> = ({ data }) => {
                               textAlign: "left",
                               cursor: "pointer",
                               fontSize: 14,
-                              color: "#d32f2f",
+                              color: row.isActive ? "#d32f2f" : "#3A7145",
                             }}
-                            onClick={() => {
-                              setMenuOpenId(null);
-                              // handle disable logic here
-                              alert(`Disable ${row.id}`);
-                            }}
+                            onClick={() => handleToggleActive(row)}
                           >
-                            Disable
+                            {row.isActive ? "Deactivate" : "Activate"}
                           </button>
                         </div>
                       )}
